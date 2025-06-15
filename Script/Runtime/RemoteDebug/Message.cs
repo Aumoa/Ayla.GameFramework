@@ -21,9 +21,9 @@ namespace Ayla.GameFramework
             m_Payload = payload;
         }
 
-        public StreamReader GetPayloadReader()
+        public BinaryReader GetPayloadReader()
         {
-            return new StreamReader(new MemoryStream(m_Payload));
+            return new BinaryReader(new MemoryStream(m_Payload));
         }
 
         public async Task SendAsync(Socket socket, CancellationToken cancellationToken)
