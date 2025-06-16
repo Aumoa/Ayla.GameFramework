@@ -12,18 +12,18 @@ namespace Ayla.GameFramework
     {
         public readonly ushort MessageId;
         public readonly ulong TicketNo;
-        private byte[] m_Payload;
+        public readonly byte[] Payload;
 
         private Message(ushort messageId, ulong ticketNo, byte[] payload)
         {
             MessageId = messageId;
             TicketNo = ticketNo;
-            m_Payload = payload;
+            Payload = payload;
         }
 
         public BinaryReader GetPayloadReader()
         {
-            return new BinaryReader(new MemoryStream(m_Payload));
+            return new BinaryReader(new MemoryStream(Payload));
         }
 
         public async Task SendAsync(Socket socket, CancellationToken cancellationToken)
@@ -31,22 +31,22 @@ namespace Ayla.GameFramework
             var header = new byte[2 + 8 + 4];
             BitConverter.TryWriteBytes(header.AsSpan(0, 2), MessageId);
             BitConverter.TryWriteBytes(header.AsSpan(2, 8), TicketNo);
-            BitConverter.TryWriteBytes(header.AsSpan(10, 4), (uint)m_Payload.Length);
-            await SendExactlyAsync(socket, header, cancellationToken);
-            await SendExactlyAsync(socket, m_Payload, cancellationToken);
+            BitConverter.TryWriteBytes(header.AsSpan(10, 4), (uint)Payload.Length);
+            await socket.SendExactlyAsync(header, cancellationToken);
+            await socket.SendExactlyAsync(Payload, cancellationToken);
         }
 
         public static async Task<Message> ReceiveAsync(Socket socket, CancellationToken cancellationToken)
         {
             var buffer = new byte[2 + 8 + 4];
 
-            await ReceiveExactlyAsync(socket, buffer.AsMemory(0, 2 + 8 + 4), cancellationToken);
+            await socket.ReceiveExactlyAsync(buffer.AsMemory(0, 2 + 8 + 4), cancellationToken);
             ushort messageId = BitConverter.ToUInt16(buffer.AsSpan(0, 2));
             ulong ticketNo = BitConverter.ToUInt64(buffer.AsSpan(2, 8));
             uint payloadSize = BitConverter.ToUInt32(buffer.AsSpan(10, 4));
 
             buffer = new byte[payloadSize];
-            await ReceiveExactlyAsync(socket, buffer, cancellationToken);
+            await socket.ReceiveExactlyAsync(buffer, cancellationToken);
 
             return new Message(messageId, ticketNo, buffer);
         }
@@ -57,34 +57,6 @@ namespace Ayla.GameFramework
         public static Message Construct(ushort messageId, ulong ticketNo, ReadOnlyMemory<byte> payload)
         {
             return new Message(messageId, ticketNo, payload.ToArray());
-        }
-
-        private static async Task ReceiveExactlyAsync(Socket socket, Memory<byte> output, CancellationToken cancellationToken)
-        {
-            int recv = 0;
-            while (recv < output.Length)
-            {
-                int bytesRead = await socket.ReceiveAsync(output[recv..], SocketFlags.None, cancellationToken);
-                if (bytesRead == 0)
-                {
-                    throw new SocketException((int)SocketError.ConnectionReset);
-                }
-                recv += bytesRead;
-            }
-        }
-
-        private static async Task SendExactlyAsync(Socket socket, ReadOnlyMemory<byte> input, CancellationToken cancellationToken)
-        {
-            int sent = 0;
-            while (sent < input.Length)
-            {
-                int bytesSent = await socket.SendAsync(input[sent..], SocketFlags.None, cancellationToken);
-                if (bytesSent == 0)
-                {
-                    throw new SocketException((int)SocketError.ConnectionReset);
-                }
-                sent += bytesSent;
-            }
         }
     }
 }
