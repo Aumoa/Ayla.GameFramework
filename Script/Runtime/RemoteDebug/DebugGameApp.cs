@@ -36,14 +36,14 @@ namespace Ayla.GameFramework
 
         private async Task HandshakeAsync(CancellationToken cancellationToken)
         {
-            var rsp = await m_Pipeline!.SendRequestAsync(ClientMessage.HANDSHAKE, ClientHandshakeRequest.AsPayload(ClientType.Game), cancellationToken);
+            var rsp = await m_Pipeline!.SendRequestAsync(ClientMessage.HANDSHAKE, DebugGameHandshakeRequest.AsPayload(ClientType.Game), cancellationToken);
             bool failure = false;
             if (rsp.MessageId != ClientMessage.HANDSHAKE)
             {
                 Debug.LogErrorFormat("Handshake failed, unexpected response message ID: {0}", rsp.MessageId);
                 failure = true;
             }
-            else if (ClientHandshakeResponse.FromPayload(rsp.Payload).Ok == false)
+            else if (DebugGameHandshakeResponse.FromPayload(rsp.Payload).Ok == false)
             {
                 Debug.LogError("Handshake failed.");
                 failure = true;

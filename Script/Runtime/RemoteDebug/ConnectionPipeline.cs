@@ -116,7 +116,7 @@ namespace NetEngine.Network
 
                     try
                     {
-                        var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                        using var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
                         await socket.ConnectAsync(m_EndPoint.Address, m_EndPoint.Port);
                         var linkedCancellationToken = CancellationTokenSource.CreateLinkedTokenSource(scopedCancellationToken.Token, cancellationToken).Token;
                         var loopTask = Task.WhenAny(
@@ -131,6 +131,8 @@ namespace NetEngine.Network
                         {
                             Debug.LogWarning("A Connection Reset state has been detected on the socket.");
                         }
+
+                        socket.Close();
                     }
                     catch (SocketException)
                     {

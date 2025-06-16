@@ -2,7 +2,7 @@
 
 namespace Protocol.Schemas.Client
 {
-    public record ClientHandshakeResponse
+    public record DebugGameHandshakeResponse
     {
         public bool Ok { get; init; }
 
@@ -11,14 +11,14 @@ namespace Protocol.Schemas.Client
             return new byte[] { ok ? (byte)1 : (byte)0 };
         }
 
-        public static ClientHandshakeResponse FromPayload(ReadOnlySpan<byte> payload)
+        public static DebugGameHandshakeResponse FromPayload(ReadOnlySpan<byte> payload)
         {
             if (payload.Length < 1)
             {
                 throw new ArgumentException("Invalid payload length for ClientHandshakeResponse.", nameof(payload));
             }
 
-            return new ClientHandshakeResponse
+            return new DebugGameHandshakeResponse
             {
                 Ok = payload[0] != 0
             };
