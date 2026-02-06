@@ -20,7 +20,7 @@ public class SingletonManager : MonoBehaviour
     }
 
     [RuntimeInitializeOnLoadMethod]
-    private static void Initialize()
+    private static async Task Initialize()
     {
         var gameObject = new GameObject("Singleton Manager", typeof(SingletonManager));
         DontDestroyOnLoad(gameObject);
@@ -29,33 +29,96 @@ public class SingletonManager : MonoBehaviour
         using var scope1 = ListPool<Type>.Get(out var singletonTypes);
         ReflectionUtility.GetTypes(t => t.IsAssignableTo(typeof(Singleton)) && !t.IsAbstract, singletonTypes);
         using var scope2 = ListPool<Singleton>.Get(out var singletons);
-        foreach (var type in singletonTypes)
-        {
-            var constructor = type.GetConstructor(Array.Empty<Type>());
-            if (constructor == null)
-            {
-                Debug.LogErrorFormat("Singleton type {0} does not have a parameterless constructor.", type.FullName);
-                continue;
-            }
 
+        Singleton.ConstructorContext.Begin(s_Manager);
+        using (new TimerScope("Construct singleton instances took {0}"))
+        {
             try
             {
-                singletons.Add((Singleton)constructor.Invoke(Array.Empty<object>()));
+                foreach (var type in singletonTypes)
+                {
+                    var constructor = type.GetConstructor(Array.Empty<Type>());
+                    if (constructor == null)
+                    {
+                        Debug.LogErrorFormat("Singleton type {0} does not have a parameterless constructor.", type.FullName);
+                        continue;
+                    }
+
+                    try
+                    {
+                        singletons.Add((Singleton)constructor.Invoke(Array.Empty<object>()));
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.LogErrorFormat("Failed to initialize singleton type {0}: {1}", type.FullName, e);
+                        continue;
+                    }
+                }
             }
-            catch (Exception e)
+            finally
             {
-                Debug.LogErrorFormat("Failed to initialize singleton type {0}: {1}", type.FullName, e);
-                continue;
+                Singleton.ConstructorContext.End();
             }
         }
 
-        foreach (var singleton in singletons)
+        using var scope3 = ListPool<ValueTask>.Get(out var tasks);
+        using (new TimerScope("Initialize singleton instances took {0} with async operations"))
         {
-            singleton.Initialize();
+            foreach (var singleton in singletons)
+            {
+                tasks.Add(singleton.InitializeAsync(ApplicationMisc.ApplicationCancellationToken));
+            }
+
+            foreach (var task in tasks)
+            {
+                await task;
+            }
+        }
+
+        tasks.Clear();
+
+        using (new TimerScope("Post-initialize singleton instances took {0} with async operations"))
+        {
+            foreach (var singleton in singletons)
+            {
+                tasks.Add(singleton.PostInitializeAsync(ApplicationMisc.ApplicationCancellationToken));
+            }
+
+            foreach (var task in tasks)
+            {
+                await task;
+            }
         }
 
         s_SingletonInstances = singletons.ToArray();
         Debug.LogFormat("Initialized {0} singleton(s).", s_SingletonInstances.Length);
+    }
+
+    private void Update()
+    {
+        Debug.Assert(s_SingletonInstances != null, "Singleton instances have not been initialized.");
+        foreach (var singleton in s_SingletonInstances!)
+        {
+            singleton.Update();
+        }
+    }
+
+    private void LateUpdate()
+    {
+        Debug.Assert(s_SingletonInstances != null, "Singleton instances have not been initialized.");
+        foreach (var singleton in s_SingletonInstances!)
+        {
+            singleton.LateUpdate();
+        }
+    }
+
+    private void FixedUpdate()
+    {
+        Debug.Assert(s_SingletonInstances != null, "Singleton instances have not been initialized.");
+        foreach (var singleton in s_SingletonInstances!)
+        {
+            singleton.FixedUpdate();
+        }
     }
 
     private void OnGUI()
