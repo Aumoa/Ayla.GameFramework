@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -9,14 +8,28 @@ namespace Ayla;
 
 public class SingletonManager : MonoBehaviour
 {
-    private static SingletonManager? s_Manager;
-    private static Singleton[]? s_SingletonInstances;
-    private static readonly List<Task> s_ContinuationQueue = new();
+    [SerializeField]
+    private Singleton[] m_Singletons = Array.Empty<Singleton>();
 
-    public enum KnownEventNames
+    private static SingletonManager? s_Instance;
+
+    private static SingletonManager Instance
     {
-        PostInitialize = 1,
-        UserEvent = 100
+        get
+        {
+            if (s_Instance != null)
+            {
+                return s_Instance;
+            }
+
+            s_Instance = FindAnyObjectByType<SingletonManager>();
+            if (s_Instance == null)
+            {
+                throw new InvalidOperationException("SingletonManager has not been initialized yet.");
+            }
+
+            return s_Instance;
+        }
     }
 
     [RuntimeInitializeOnLoadMethod]
@@ -24,13 +37,13 @@ public class SingletonManager : MonoBehaviour
     {
         var gameObject = new GameObject("Singleton Manager", typeof(SingletonManager));
         DontDestroyOnLoad(gameObject);
-        s_Manager = gameObject.GetComponent<SingletonManager>();
+        var manager = gameObject.GetComponent<SingletonManager>();
 
         using var scope1 = ListPool<Type>.Get(out var singletonTypes);
         ReflectionUtility.GetTypes(t => t.IsAssignableTo(typeof(Singleton)) && !t.IsAbstract, singletonTypes);
         using var scope2 = ListPool<Singleton>.Get(out var singletons);
 
-        Singleton.ConstructorContext.Begin(s_Manager);
+        Singleton.ConstructorContext.Begin(manager);
         using (new TimerScope("Construct singleton instances took {0}"))
         {
             try
@@ -46,7 +59,7 @@ public class SingletonManager : MonoBehaviour
 
                     try
                     {
-                        singletons.Add((Singleton)constructor.Invoke(Array.Empty<object>()));
+                        singletons.Add((Singleton)gameObject.AddComponent(type));
                     }
                     catch (Exception e)
                     {
@@ -90,86 +103,28 @@ public class SingletonManager : MonoBehaviour
             }
         }
 
-        s_SingletonInstances = singletons.ToArray();
-        Debug.LogFormat("Initialized {0} singleton(s).", s_SingletonInstances.Length);
+        manager.m_Singletons = singletons.ToArray();
+        Debug.LogFormat("Initialized {0} singleton(s).", singletons.Count);
     }
 
-    private void Update()
+    /// <summary>
+    /// Dispatches an event to all registered singletons asynchronously.
+    /// </summary>
+    /// <param name="eventId">The identifier of the event to dispatch.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    public static async ValueTask DispatchEventAsync(int eventId, CancellationToken cancellationToken = default)
     {
-        Debug.Assert(s_SingletonInstances != null, "Singleton instances have not been initialized.");
-        foreach (var singleton in s_SingletonInstances!)
+        var instance = Instance;
+        using var scope1 = ListPool<ValueTask>.Get(out var tasks);
+        foreach (var singleton in instance.m_Singletons)
         {
-            singleton.Update();
-        }
-    }
-
-    private void LateUpdate()
-    {
-        Debug.Assert(s_SingletonInstances != null, "Singleton instances have not been initialized.");
-        foreach (var singleton in s_SingletonInstances!)
-        {
-            singleton.LateUpdate();
-        }
-    }
-
-    private void FixedUpdate()
-    {
-        Debug.Assert(s_SingletonInstances != null, "Singleton instances have not been initialized.");
-        foreach (var singleton in s_SingletonInstances!)
-        {
-            singleton.FixedUpdate();
-        }
-    }
-
-    private void OnGUI()
-    {
-        Debug.Assert(s_SingletonInstances != null, "Singleton instances have not been initialized.");
-        foreach (var singleton in s_SingletonInstances!)
-        {
-            singleton.OnGUI();
-        }
-    }
-
-    public static Task DispatchEventAsync(int eventId, CancellationToken cancellationToken = default)
-    {
-        lock (s_ContinuationQueue)
-        {
-            if (s_ContinuationQueue.Count > 0)
-            {
-                var task = ContinuationChain();
-                s_ContinuationQueue.Add(task);
-                return task;
-
-                async Task ContinuationChain()
-                {
-                    await s_ContinuationQueue[^1];
-                    await InternalDispatchEventAsync(eventId, cancellationToken);
-                }
-            }
-            else
-            {
-                var task = InternalDispatchEventAsync(eventId, cancellationToken);
-                s_ContinuationQueue.Add(task);
-                return task;
-            }
-        }
-    }
-
-    private static async Task InternalDispatchEventAsync(int eventId, CancellationToken cancellationToken = default)
-    {
-        Debug.Assert(s_SingletonInstances != null, "Singleton instances have not been initialized.");
-        var tasks = new List<Task>();
-        foreach (var singleton in s_SingletonInstances!)
-        {
-            tasks.Add(singleton.OnEvent(eventId, cancellationToken).AsTask());
+            tasks.Add(singleton.OnEvent(eventId, cancellationToken));
         }
 
-        await Task.WhenAll(tasks);
-        await Task.Yield();
-
-        lock (s_ContinuationQueue)
+        foreach (var task in tasks)
         {
-            s_ContinuationQueue.RemoveAt(0);
+            await task;
         }
     }
 }

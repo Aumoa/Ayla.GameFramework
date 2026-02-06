@@ -1,9 +1,10 @@
 ﻿using System.Threading;
 using System.Threading.Tasks;
+using UnityEngine;
 
 namespace Ayla;
 
-public abstract class Singleton
+public abstract class Singleton : MonoBehaviour
 {
     internal static class ConstructorContext
     {
@@ -20,14 +21,25 @@ public abstract class Singleton
         }
     }
 
-    public SingletonManager Manager { get; }
+    [SerializeField]
+    private SingletonManager? m_Manager;
+
+    public SingletonManager Manager
+    {
+        get
+        {
+            if (m_Manager == null)
+            {
+                throw new System.InvalidOperationException("Singletons can only be constructed during SingletonManager initialization.");
+            }
+
+            return m_Manager;
+        }
+    }
 
     public Singleton()
     {
-#pragma warning disable UNT0007
-        Manager = ConstructorContext.Manager.Value
-            ?? throw new System.InvalidOperationException("Singletons can only be constructed during SingletonManager initialization.");
-#pragma warning restore UNT0007
+        m_Manager = ConstructorContext.Manager.Value;
     }
 
     public virtual ValueTask InitializeAsync(CancellationToken cancellationToken = default)
@@ -43,21 +55,5 @@ public abstract class Singleton
     public virtual ValueTask OnEvent(int eventId, CancellationToken cancellationToken = default)
     {
         return default;
-    }
-
-    public virtual void Update()
-    {
-    }
-
-    public virtual void LateUpdate()
-    {
-    }
-
-    public virtual void FixedUpdate()
-    {
-    }
-
-    public virtual void OnGUI()
-    {
     }
 }
