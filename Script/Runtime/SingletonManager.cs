@@ -12,6 +12,7 @@ public class SingletonManager : MonoBehaviour
     private Singleton[] m_Singletons = Array.Empty<Singleton>();
 
     private static SingletonManager? s_Instance;
+    private static Task s_InstanceTask = null!;
 
     private static SingletonManager Instance
     {
@@ -23,17 +24,33 @@ public class SingletonManager : MonoBehaviour
             }
 
             s_Instance = FindAnyObjectByType<SingletonManager>();
+            if (s_Instance != null)
+            {
+                return s_Instance;
+            }
+
+            s_InstanceTask.Wait();
             if (s_Instance == null)
             {
-                throw new InvalidOperationException("SingletonManager has not been initialized yet.");
+                throw new InvalidOperationException("SingletonManager instance is not initialized.");
             }
 
             return s_Instance;
         }
     }
 
-    [RuntimeInitializeOnLoadMethod]
-    private static async Task Initialize()
+    public static async ValueTask WaitForInitializeAsync()
+    {
+        await s_InstanceTask;
+    }
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterAssembliesLoaded)]
+    private static void Initialize()
+    {
+        s_InstanceTask = InitializeAsync();
+    }
+
+    private static async Task InitializeAsync()
     {
         var gameObject = new GameObject("Singleton Manager", typeof(SingletonManager));
         DontDestroyOnLoad(gameObject);
