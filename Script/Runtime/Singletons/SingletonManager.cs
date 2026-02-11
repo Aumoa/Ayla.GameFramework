@@ -61,7 +61,7 @@ public class SingletonManager : MonoBehaviour
         using var scope2 = ListPool<Singleton>.Get(out var singletons);
 
         Singleton.ConstructorContext.Begin(manager);
-        using (new TimerScope("Construct singleton instances took {0}"))
+        using (new TimeLogScope("Construct singleton instances took {0}"))
         {
             try
             {
@@ -92,7 +92,7 @@ public class SingletonManager : MonoBehaviour
         }
 
         using var scope3 = ListPool<ValueTask>.Get(out var tasks);
-        using (new TimerScope("Initialize singleton instances took {0} with async operations"))
+        using (new TimeLogScope("Initialize singleton instances took {0} with async operations"))
         {
             foreach (var singleton in singletons)
             {
@@ -107,7 +107,7 @@ public class SingletonManager : MonoBehaviour
 
         tasks.Clear();
 
-        using (new TimerScope("Post-initialize singleton instances took {0} with async operations"))
+        using (new TimeLogScope("Post-initialize singleton instances took {0} with async operations"))
         {
             foreach (var singleton in singletons)
             {

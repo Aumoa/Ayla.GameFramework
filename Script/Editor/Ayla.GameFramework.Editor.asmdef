@@ -1,12 +1,14 @@
 {
-    "name": "Ayla.GameFramework",
+    "name": "Ayla.GameFramework.Editor",
     "rootNamespace": "Ayla",
     "references": [
         "Ayla.Core",
-        "Unity.ResourceManager",
-        "Unity.Addressables"
+        "Ayla.Core.Editor",
+        "Ayla.GameFramework"
     ],
-    "includePlatforms": [],
+    "includePlatforms": [
+        "Editor"
+    ],
     "excludePlatforms": [],
     "allowUnsafeCode": true,
     "overrideReferences": false,
