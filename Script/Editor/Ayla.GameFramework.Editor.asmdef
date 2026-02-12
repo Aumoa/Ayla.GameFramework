@@ -4,7 +4,9 @@
     "references": [
         "Ayla.Core",
         "Ayla.Core.Editor",
-        "Ayla.GameFramework"
+        "Ayla.GameFramework",
+        "Unity.Addressables",
+        "Unity.Addressables.Editor"
     ],
     "includePlatforms": [
         "Editor"

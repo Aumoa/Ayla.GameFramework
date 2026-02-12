@@ -1,8 +1,12 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.Pool;
+#if !UNITY_EDITOR
+using UnityEngine.AddressableAssets;
+#endif
 
 namespace Ayla;
 
@@ -60,20 +64,18 @@ public class SingletonManager : MonoBehaviour
         ReflectionUtility.GetTypes(t => t.IsAssignableTo(typeof(Singleton)) && !t.IsAbstract, singletonTypes);
         using var scope2 = ListPool<Singleton>.Get(out var singletons);
 
-        Singleton.ConstructorContext.Begin(manager);
-        using (new TimeLogScope("Construct singleton instances took {0}"))
+        using (new TimeLogScope("Load SingletonDefault asset took {0}"))
         {
-            try
+            var singletonDefault = await LoadSingletonDefaultAssetAsync();
+            Singleton.ConstructorContext.Begin(new Singleton.ConstructorArguments(manager, singletonDefault));
+        }
+
+        try
+        {
+            using (new TimeLogScope("Construct singleton instances took {0}"))
             {
                 foreach (var type in singletonTypes)
                 {
-                    var constructor = type.GetConstructor(Array.Empty<Type>());
-                    if (constructor == null)
-                    {
-                        Debug.LogErrorFormat("Singleton type {0} does not have a parameterless constructor.", type.FullName);
-                        continue;
-                    }
-
                     try
                     {
                         singletons.Add((Singleton)gameObject.AddComponent(type));
@@ -85,10 +87,10 @@ public class SingletonManager : MonoBehaviour
                     }
                 }
             }
-            finally
-            {
-                Singleton.ConstructorContext.End();
-            }
+        }
+        finally
+        {
+            Singleton.ConstructorContext.End();
         }
 
         using var scope3 = ListPool<ValueTask>.Get(out var tasks);
@@ -99,10 +101,7 @@ public class SingletonManager : MonoBehaviour
                 tasks.Add(singleton.InitializeAsync(ApplicationMisc.ApplicationCancellationToken));
             }
 
-            foreach (var task in tasks)
-            {
-                await task;
-            }
+            await TaskUtility.WhenAll(tasks);
         }
 
         tasks.Clear();
@@ -114,14 +113,32 @@ public class SingletonManager : MonoBehaviour
                 tasks.Add(singleton.PostInitializeAsync(ApplicationMisc.ApplicationCancellationToken));
             }
 
-            foreach (var task in tasks)
-            {
-                await task;
-            }
+            await TaskUtility.WhenAll(tasks);
         }
 
         manager.m_Singletons = singletons.ToArray();
         Debug.LogFormat("Initialized {0} singleton(s).", singletons.Count);
+    }
+
+    private static
+#if !UNITY_EDITOR
+        async
+#endif
+        ValueTask<SingletonDefault> LoadSingletonDefaultAssetAsync()
+    {
+#if UNITY_EDITOR
+        var targetAssets = AssetDatabase.FindAssets("t:SingletonDefault");
+        switch (targetAssets.Length)
+        {
+            case < 1 or > 1:
+                throw new InvalidOperationException($"Expected exactly one SingletonDefault asset, found {targetAssets.Length}.");
+        }
+
+        GUID.TryParse(targetAssets[0], out var guid);
+        return new ValueTask<SingletonDefault>(AssetDatabase.LoadAssetByGUID<SingletonDefault>(guid));
+#else
+        return await Addressables.LoadAssetAsync<SingletonDefault>("Assets/Game/Settings/SingletonDefault.asset").Task;
+#endif
     }
 
     /// <summary>

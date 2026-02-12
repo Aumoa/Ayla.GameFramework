@@ -53,6 +53,8 @@ public class SingletonDefaultEditor : Editor
 
     private void OnEnable()
     {
+        Undo.undoRedoPerformed += Invalidate;
+
         m_SingletonDatasProperty = serializedObject.FindProperty("m_SingletonDatas");
         Debug.Assert(m_SingletonDatasProperty != null);
         m_Rows = m_SingletonDatasProperty!.FindPropertyRelative("m_Rows");
@@ -77,7 +79,8 @@ public class SingletonDefaultEditor : Editor
 
     private void OnDisable()
     {
-        // 캐시된 에디터들 정리
+        Undo.undoRedoPerformed -= Invalidate;
+
         foreach (var editor in m_CachedEditors.Values)
         {
             if (editor != null)
@@ -85,6 +88,7 @@ public class SingletonDefaultEditor : Editor
                 DestroyImmediate(editor);
             }
         }
+
         m_CachedEditors.Clear();
     }
 
@@ -126,9 +130,10 @@ public class SingletonDefaultEditor : Editor
             for (int i = 0; i < arraySize; ++i)
             {
                 var element = m_Rows.GetArrayElementAtIndex(i);
-                element.Next(true);
+                element.Next(true); // Key
                 var monoScript = GUIDToMonoScript(element.stringValue);
                 string displayName = monoScript ? GetClassDisplayName(monoScript.GetClass()) : "<Missing Script>";
+                element.Next(false); // Value
 
                 bool foldout = m_Foldout.GetValueOrDefault(displayName, true);
                 using (GUIScope.Changed())
@@ -141,8 +146,33 @@ public class SingletonDefaultEditor : Editor
                         SaveFoldouts();
                     }
 
-                    if (GUILayout.Button("X", s_DeleteButtonWidthLayoutCache ??= GUILayout.Width(24)))
+                    using (GUIScope.Color(Color.red))
                     {
+                        if (GUILayout.Button("X", s_DeleteButtonWidthLayoutCache ??= GUILayout.Width(24)))
+                        {
+                            var serializedObject = m_Rows.serializedObject;
+                            serializedObject.Update();
+
+                            Undo.IncrementCurrentGroup();
+                            Undo.SetCurrentGroupName("Delete SingletonData entry");
+                            var undoGroup = Undo.GetCurrentGroup();
+                            Undo.RecordObject(m_Rows.serializedObject.targetObject, "");
+                            var objectReferenceValue = element.objectReferenceValue;
+                            if (objectReferenceValue)
+                            {
+                                Undo.DestroyObjectImmediate(objectReferenceValue);
+                            }
+                            m_Rows.DeleteArrayElementAtIndex(i);
+
+                            serializedObject.ApplyModifiedProperties();
+
+                            Undo.CollapseUndoOperations(undoGroup);
+                            --arraySize;
+                            --i;
+                            Invalidate();
+
+                            continue;
+                        }
                     }
                 }
 
@@ -150,7 +180,6 @@ public class SingletonDefaultEditor : Editor
                 {
                     using (EditorGUIScope.Indent())
                     {
-                        element.Next(false); // Value
                         var singletonData = element.objectReferenceValue as SingletonData;
                         if (singletonData != null)
                         {
@@ -179,6 +208,12 @@ public class SingletonDefaultEditor : Editor
             }
         }
 
+        if (m_UnresolvedMonoScripts == null)
+        {
+            Repaint();
+            return;
+        }
+
         if (m_UnresolvedMonoScripts.Length == 0)
         {
             using (GUIScope.Color(Color.green))
@@ -193,10 +228,15 @@ public class SingletonDefaultEditor : Editor
                 m_SelectedIndex = EditorGUILayout.Popup(m_SelectedIndex, m_UnresolvedMonoScriptTypenames);
                 if (GUILayout.Button(SingletonDefaultText.Add))
                 {
+                    Undo.IncrementCurrentGroup();
+                    Undo.SetCurrentGroupName("Create SingletonData entry");
+                    var undoGroup = Undo.GetCurrentGroup();
+
                     var typeToCreate = m_UnresolvedMonoScripts[m_SelectedIndex];
                     var dataAsset = CreateInstance(typeToCreate);
-                    dataAsset.hideFlags |= HideFlags.HideInHierarchy;
+                    dataAsset.name = ObjectNames.NicifyVariableName(typeToCreate.Name);
                     AssetDatabase.AddObjectToAsset(dataAsset, serializedObject.targetObject);
+                    Undo.RegisterCreatedObjectUndo(dataAsset, "");
                     var guid = GetMonoScriptGuidFromType(typeToCreate);
 
                     serializedObject.Update();
@@ -208,10 +248,11 @@ public class SingletonDefaultEditor : Editor
                     addedArrayElement.Next(false);  // Value
                     addedArrayElement.objectReferenceValue = dataAsset;
                     serializedObject.ApplyModifiedProperties();
+
+                    Undo.CollapseUndoOperations(undoGroup);
                 }
 
-                m_UnresolvedMonoScripts = null;
-                m_UnresolvedMonoScriptTypenames = null;
+                Invalidate();
             }
         }
 
@@ -242,6 +283,13 @@ public class SingletonDefaultEditor : Editor
 
         var foldouts = string.Join('|', m_Foldout.Where(kv => kv.Value == false).Select(kv => kv.Key));
         EditorPrefs.SetString(string.Format(kFoldoutKey, m_TargetGUID), foldouts);
+    }
+
+    private void Invalidate()
+    {
+        m_UnresolvedMonoScripts = null;
+        m_DuplicatedMonoScriptTypenameSet = null;
+        m_UnresolvedMonoScriptTypenames = null;
     }
 
     private Type[] GetUnresolvedMonoScripts()

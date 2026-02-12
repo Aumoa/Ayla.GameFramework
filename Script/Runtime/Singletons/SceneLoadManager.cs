@@ -1,5 +1,16 @@
-﻿namespace Ayla;
+﻿using System;
+using System.Threading;
+using System.Threading.Tasks;
 
-public class SceneLoadManager : SingletonBehaviour<SceneLoadManagerData>
+namespace Ayla;
+
+public class SceneLoadManager : Singleton<SceneLoadManagerData>
 {
+    public override async ValueTask InitializeAsync(CancellationToken cancellationToken = default)
+    {
+        if (Data.StartupScene.RuntimeKeyIsValid() == false)
+        {
+            throw new InvalidOperationException();
+        }
+    }
 }
