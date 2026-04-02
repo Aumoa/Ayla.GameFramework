@@ -73,13 +73,59 @@ public abstract class Singleton : MonoBehaviour
     }
 }
 
-public abstract class Singleton<TData> : Singleton
+public abstract class Singleton<TSingleton> : Singleton
+    where TSingleton : Singleton
+{
+    private static TSingleton? s_Instance;
+
+    public static TSingleton Instance
+    {
+        get
+        {
+            if (s_Instance == null)
+            {
+                throw new InvalidOperationException($"Singleton instance of type {typeof(TSingleton)} is not initialized.");
+            }
+
+            return s_Instance;
+        }
+    }
+
+    protected virtual void Awake()
+    {
+        Debug.Assert(s_Instance == null);
+        s_Instance = (TSingleton)(object)this;
+    }
+
+    protected virtual void OnDestroy()
+    {
+        Debug.Assert(s_Instance == this);
+        s_Instance = null;
+    }
+}
+
+public abstract class Singleton<TSingleton, TData> : Singleton<TSingleton>
+    where TSingleton : Singleton
     where TData : SingletonData
 {
-    public readonly TData Data;
+    [SerializeField]
+    private TData? m_Data;
+
+    public TData Data => m_Data
+        ?? throw new InvalidOperationException("Singleton data is not initialized.");
 
     public Singleton()
     {
-        Data = (TData)ConstructorContext.Args.Value.Data.GetData(this);
+#if UNITY_EDITOR
+        try
+        {
+#endif
+            m_Data = (TData)ConstructorContext.Args.Value.Data.GetData(this);
+#if UNITY_EDITOR
+        }
+        catch (NullReferenceException)
+        {
+        }
+#endif
     }
 }
