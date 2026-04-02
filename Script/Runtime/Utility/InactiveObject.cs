@@ -157,6 +157,7 @@ public static class InactiveObject
         InitializeOnDemand();
         var instancedGameObject = Object.Instantiate(original, s_InactiveObjectRoot!.transform);
         instancedGameObject.SetActive(false);
+        instancedGameObject.transform.SetParent(null);
         SceneManager.MoveGameObjectToScene(instancedGameObject, SceneManager.GetActiveScene());
         return instancedGameObject;
     }
@@ -175,6 +176,7 @@ public static class InactiveObject
         InitializeOnDemand();
         var instancedGameObject = Object.Instantiate(original, s_InactiveObjectRoot!.transform);
         instancedGameObject.SetActive(false);
+        instancedGameObject.transform.SetParent(null);
         SceneManager.MoveGameObjectToScene(instancedGameObject, SceneManager.GetActiveScene());
         instancedGameObject.transform.SetLocalPositionAndRotation(position, rotation);
         return instancedGameObject;

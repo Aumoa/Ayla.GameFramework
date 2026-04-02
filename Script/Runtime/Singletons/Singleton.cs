@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -58,7 +59,7 @@ public abstract class Singleton : MonoBehaviour
             return null;
         }
 
-        var dataSingleton = typeof(Singleton<>);
+        var dataSingleton = typeof(Singleton<,>);
         if (!t.IsImplements(dataSingleton))
         {
             return null;
@@ -69,7 +70,7 @@ public abstract class Singleton : MonoBehaviour
             t = t.BaseType;
         }
 
-        return t.GetGenericArguments()[0];
+        return t.GetGenericArguments()[1];
     }
 }
 
@@ -89,6 +90,12 @@ public abstract class Singleton<TSingleton> : Singleton
 
             return s_Instance;
         }
+    }
+
+    public static bool TryGetInstance([NotNullWhen(true)] out TSingleton? instance)
+    {
+        instance = s_Instance;
+        return s_Instance != null;
     }
 
     protected virtual void Awake()
