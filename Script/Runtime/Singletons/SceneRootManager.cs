@@ -28,7 +28,7 @@ public class SceneRootManager : Singleton<SceneRootManager, SceneRootManagerData
         base.OnDestroy();
     }
 
-    public override ValueTask PostInitializeAsync(CancellationToken cancellationToken = default)
+    public override ValueTask StartAsync(CancellationToken cancellationToken = default)
     {
         if (Data.InitialScene.RuntimeKeyIsValid() == false)
         {
@@ -36,7 +36,16 @@ public class SceneRootManager : Singleton<SceneRootManager, SceneRootManagerData
             return default;
         }
 
-        LoadSceneAsync(Data.InitialScene).Forget();
+        AssetReferenceGameObject initialScene = Data.InitialScene;
+
+#if UNITY_EDITOR
+        if (Data.EditorOverrideScene.RuntimeKeyIsValid())
+        {
+            initialScene = Data.EditorOverrideScene;
+        }
+#endif
+
+        LoadSceneAsync(initialScene).Forget();
         return default;
     }
 

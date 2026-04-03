@@ -116,6 +116,18 @@ public class SingletonManager : MonoBehaviour
             await TaskUtility.WhenAll(tasks);
         }
 
+        tasks.Clear();
+
+        using (new TimeLogScope("Post-initialize singleton instances took {0} with async operations"))
+        {
+            foreach (var singleton in singletons)
+            {
+                tasks.Add(singleton.StartAsync(ApplicationMisc.ApplicationCancellationToken));
+            }
+
+            await TaskUtility.WhenAll(tasks);
+        }
+
         manager.m_Singletons = singletons.ToArray();
         Debug.LogFormat("Initialized {0} singleton(s).", singletons.Count);
     }
@@ -127,15 +139,7 @@ public class SingletonManager : MonoBehaviour
         ValueTask<SingletonDefault> LoadSingletonDefaultAssetAsync()
     {
 #if UNITY_EDITOR
-        var targetAssets = AssetDatabase.FindAssets("t:SingletonDefault");
-        switch (targetAssets.Length)
-        {
-            case < 1 or > 1:
-                throw new InvalidOperationException($"Expected exactly one SingletonDefault asset, found {targetAssets.Length}.");
-        }
-
-        GUID.TryParse(targetAssets[0], out var guid);
-        return new ValueTask<SingletonDefault>(AssetDatabase.LoadAssetByGUID<SingletonDefault>(guid));
+        return new ValueTask<SingletonDefault>(AssetDatabase.LoadAssetAtPath<SingletonDefault>(SingletonDefault.kDefaultAssetPath));
 #else
         return await Addressables.LoadAssetAsync<SingletonDefault>("Assets/Game/Settings/SingletonDefault.asset").Task;
 #endif

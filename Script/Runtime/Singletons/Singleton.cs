@@ -47,6 +47,11 @@ public abstract class Singleton : MonoBehaviour
         return default;
     }
 
+    public virtual ValueTask StartAsync(CancellationToken cancellationToken = default)
+    {
+        return default;
+    }
+
     public virtual ValueTask OnEvent(int eventId, CancellationToken cancellationToken = default)
     {
         return default;
@@ -104,6 +109,12 @@ public abstract class Singleton<TSingleton> : Singleton
         s_Instance = (TSingleton)(object)this;
     }
 
+    protected virtual void OnEnable()
+    {
+        Debug.Assert(s_Instance == null || s_Instance == this);
+        s_Instance = (TSingleton)(object)this;
+    }
+
     protected virtual void OnDestroy()
     {
         Debug.Assert(s_Instance == this);
@@ -127,7 +138,8 @@ public abstract class Singleton<TSingleton, TData> : Singleton<TSingleton>
         try
         {
 #endif
-            m_Data = (TData)ConstructorContext.Args.Value.Data.GetData(this);
+            m_Data = (TData?)ConstructorContext.Args.Value.Data.GetData(this)
+                ?? throw new InvalidOperationException("Singleton data is not found in SingletonDefault.");
 #if UNITY_EDITOR
         }
         catch (NullReferenceException)
