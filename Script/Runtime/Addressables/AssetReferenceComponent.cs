@@ -24,6 +24,7 @@ public class AssetReferenceComponent<T> : AssetReferenceGameObject
         return gameObject.TryGetComponent<T>(out _);
     }
 
+#if UNITY_EDITOR
     public override bool ValidateAsset(string mainAssetPath)
     {
         var gameObject = AssetDatabase.LoadAssetAtPath<GameObject>(mainAssetPath);
@@ -34,4 +35,5 @@ public class AssetReferenceComponent<T> : AssetReferenceGameObject
 
         return gameObject.TryGetComponent<T>(out _);
     }
+#endif
 }
