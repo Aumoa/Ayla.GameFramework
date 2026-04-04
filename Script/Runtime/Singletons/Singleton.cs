@@ -115,6 +115,10 @@ public abstract class Singleton<TSingleton> : Singleton
         s_Instance = (TSingleton)(object)this;
     }
 
+    protected virtual void OnDisable()
+    {
+    }
+
     protected virtual void OnDestroy()
     {
         Debug.Assert(s_Instance == this);

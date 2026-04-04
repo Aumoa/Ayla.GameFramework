@@ -1,6 +1,8 @@
 ﻿using System;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
+using Object = UnityEngine.Object;
 
 namespace Ayla;
 
@@ -10,5 +12,26 @@ public class AssetReferenceComponent<T> : AssetReferenceGameObject
 {
     public AssetReferenceComponent(string guid) : base(guid)
     {
+    }
+
+    public override bool ValidateAsset(Object obj)
+    {
+        if (obj is not GameObject gameObject)
+        {
+            return false;
+        }
+
+        return gameObject.TryGetComponent<T>(out _);
+    }
+
+    public override bool ValidateAsset(string mainAssetPath)
+    {
+        var gameObject = AssetDatabase.LoadAssetAtPath<GameObject>(mainAssetPath);
+        if (gameObject == null)
+        {
+            return false;
+        }
+
+        return gameObject.TryGetComponent<T>(out _);
     }
 }

@@ -1,38 +1,49 @@
 ﻿using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.ResourceManagement.AsyncOperations;
 
 namespace Ayla
 {
     public class SceneRoot : MonoBehaviour
     {
-        private bool m_OnEnableCalled;
-        private bool m_OnDisableCalled;
+        private bool m_AwakeCalled;
+        private bool m_OnDestroyCalled;
+
+        internal AsyncOperationHandle<GameObject> m_AssetOperationHandle;
+
+        protected virtual void Awake()
+        {
+            SceneRootManager.Instance.RegisterSceneRoot(this);
+            m_AwakeCalled = true;
+        }
 
         protected virtual void OnEnable()
         {
-            SceneRootManager.Instance.RegisterSceneRoot(this);
-            m_OnEnableCalled = true;
         }
 
         protected virtual void OnDisable()
+        {
+        }
+
+        protected virtual void OnDestroy()
         {
             if (SceneRootManager.TryGetInstance(out var instance))
             {
                 instance.UnregisterSceneRoot(this);
             }
 
-            m_OnDisableCalled = true;
+            m_OnDestroyCalled = true;
         }
 
-        internal void CheckOnEnableCalled()
+        internal void CheckAwakeCalled()
         {
-            Debug.Assert(m_OnEnableCalled);
+            Debug.Assert(m_AwakeCalled);
         }
 
-        internal void CheckOnDisableCalled()
+        internal void CheckOnDestroyCalled()
         {
-            Debug.Assert(m_OnDisableCalled);
+            Debug.Assert(m_OnDestroyCalled);
         }
 
         public virtual ValueTask BeforeUnloadSceneAsync(CancellationToken cancellationToken = default)

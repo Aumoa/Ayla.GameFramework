@@ -27,13 +27,8 @@ public class SingletonManager : MonoBehaviour
                 return s_Instance;
             }
 
-            s_Instance = FindAnyObjectByType<SingletonManager>();
-            if (s_Instance != null)
-            {
-                return s_Instance;
-            }
+            s_InstanceTask?.Wait();
 
-            s_InstanceTask.Wait();
             if (s_Instance == null)
             {
                 throw new InvalidOperationException("SingletonManager instance is not initialized.");
@@ -43,9 +38,25 @@ public class SingletonManager : MonoBehaviour
         }
     }
 
+    private void OnEnable()
+    {
+        s_Instance = this;
+    }
+
+    private void OnDestroy()
+    {
+        if (s_Instance == this)
+        {
+            s_Instance = null;
+        }
+    }
+
     public static async ValueTask WaitForInitializeAsync()
     {
-        await s_InstanceTask;
+        if (s_InstanceTask != null)
+        {
+            await s_InstanceTask;
+        }
     }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterAssembliesLoaded)]

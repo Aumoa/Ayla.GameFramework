@@ -12,14 +12,18 @@ namespace Ayla;
 
 public class SceneRootManager : Singleton<SceneRootManager, SceneRootManagerData>
 {
-    private readonly List<SceneRoot> m_SceneRoots = new();
+    [SerializeField, HideInInspector]
+    private List<SceneRoot> m_SceneRoots = new();
 
     private SemaphoreSlim m_Semaphore;
 
-    protected override void Awake()
+    protected override void OnEnable()
     {
-        base.Awake();
-        m_Semaphore = new SemaphoreSlim(1);
+        base.OnEnable();
+        if (m_Semaphore == null)
+        {
+            m_Semaphore = new SemaphoreSlim(1);
+        }
     }
 
     protected override void OnDestroy()
@@ -76,22 +80,17 @@ public class SceneRootManager : Singleton<SceneRootManager, SceneRootManagerData
                 {
                     throw new InvalidOperationException("The loaded scene root prefab does not contain a SceneRoot component.");
                 }
+
+                if (beforeUnloadSceneTask.HasValue)
+                {
+                    await beforeUnloadSceneTask.Value;
+                }
             }
             catch (OperationCanceledException)
             {
-                _ = loadAssetOp.Task.ContinueWith(t =>
-                {
-                    if (t.IsCompletedSuccessfully && t.Result)
-                    {
-                        Destroy(t.Result.gameObject);
-                    }
-                });
-
-                throw;
-            }
-            finally
-            {
+                loadAssetOp.ReleaseHandleOnCompletion();
                 beforeUnloadSceneTask?.Forget();
+                throw;
             }
 
             if (sceneRootPrefab == null)
@@ -99,38 +98,50 @@ public class SceneRootManager : Singleton<SceneRootManager, SceneRootManagerData
                 throw new InvalidOperationException($"Failed to load scene root from asset {sceneRootAsset}");
             }
 
-            // Create a new empty scene and set it as active to ensure that the instantiated scene root will be in the new scene.
-            Scene emptyScene = SceneManager.CreateScene(sceneRootPrefab.name);
-            SceneManager.SetActiveScene(emptyScene);
-            SceneRoot sceneRoot = InactiveObject.Instantiate(sceneRootPrefab);
+            Scene emptyScene;
+            SceneRoot sceneRoot;
 
-            using (var unloadingContext = new SceneUnloadingContext(emptyScene, cancellationToken))
+            try
             {
-                bool hasPreviousScene = previousSceneRoot != null;
-                if (hasPreviousScene)
-                {
-                    await previousSceneRoot!.UnloadingSceneAsync(unloadingContext, cancellationToken);
-                }
-                else
-                {
-                    unloadingContext.AddUnloadAllScenes();
-                }
+                // Create a new empty scene and set it as active to ensure that the instantiated scene root will be in the new scene.
+                emptyScene = SceneManager.CreateScene(sceneRootPrefab.name);
+                SceneManager.SetActiveScene(emptyScene);
+                sceneRoot = InactiveObject.Instantiate(sceneRootPrefab);
 
-                await unloadingContext.WhenAll().WaitAsync(cancellationToken);
-
-                if (hasPreviousScene)
+                using (var unloadingContext = new SceneUnloadingContext(emptyScene, cancellationToken))
                 {
-                    // Object destroyal and scene unloading will cause OnDisable to be called on the previous scene root, so we check if OnDisable has been called to ensure that all related cleanup has been done before proceeding.
-                    previousSceneRoot!.CheckOnDisableCalled();
+                    bool hasPreviousScene = previousSceneRoot != null;
+                    if (hasPreviousScene)
+                    {
+                        await previousSceneRoot!.UnloadingSceneAsync(unloadingContext, cancellationToken);
+                    }
+                    else
+                    {
+                        unloadingContext.AddUnloadAllScenes();
+                    }
+
+                    await unloadingContext.WhenAll().WaitAsync(cancellationToken);
+
+                    if (hasPreviousScene)
+                    {
+                        // Object destroyal and scene unloading will cause OnDisable to be called on the previous scene root, so we check if OnDisable has been called to ensure that all related cleanup has been done before proceeding.
+                        previousSceneRoot!.CheckOnDestroyCalled();
+                    }
                 }
+            }
+            catch
+            {
+                loadAssetOp.Release();
+                throw;
             }
 
             // Set the new scene root active after the old scene is completely unloaded to avoid potential issues caused by having multiple active scene roots.
             sceneRoot.gameObject.SetActive(true);
+            sceneRoot.m_AssetOperationHandle = loadAssetOp;
 
             using (var loadingContext = new SceneLoadingContext(cancellationToken))
             {
-                sceneRoot.CheckOnEnableCalled();
+                sceneRoot.CheckAwakeCalled();
                 await sceneRoot.LoadingSceneAsync(loadingContext, cancellationToken);
                 await loadingContext.WhenAll().WaitAsync(cancellationToken);
             }

@@ -1,5 +1,6 @@
 ﻿using UnityEditor;
 using UnityEngine;
+using UnityEngine.AddressableAssets;
 
 namespace Ayla;
 
@@ -64,6 +65,40 @@ internal class SceneManagementTools : DevelopmentTools
                 Undo.RecordObject(data, "Change editor override scene");
                 data.EditorOverrideScene.SetEditorAsset(newEditorOverrideScene ? newEditorOverrideScene.gameObject : null!);
                 EditorUtility.SetDirty(data);
+            }
+        }
+
+        const string kHotReloadScene = nameof(SceneManagementTools) + "." + "m_HotReloadScene";
+        var hotReloadSceneGUID = EditorPrefs.GetString(kHotReloadScene);
+        var hotReloadScenePath = string.IsNullOrEmpty(hotReloadSceneGUID) ? string.Empty : AssetDatabase.GUIDToAssetPath(hotReloadSceneGUID);
+        var hotReloadScene = string.IsNullOrEmpty(hotReloadScenePath) ? null : AssetDatabase.LoadAssetAtPath<SceneRoot>(hotReloadScenePath);
+        using (GUIScope.Changed())
+        using (EditorGUIScope.Horizontal())
+        {
+            hotReloadScene = (SceneRoot?)EditorGUILayout.ObjectField(SceneManagementToolText.HotReloadSceneLabel, hotReloadScene, typeof(SceneRoot), false);
+            if (GUI.changed)
+            {
+                if (hotReloadScene)
+                {
+                    hotReloadScenePath = AssetDatabase.GetAssetPath(hotReloadScene);
+                    hotReloadSceneGUID = AssetDatabase.AssetPathToGUID(hotReloadScenePath);
+                }
+                else
+                {
+                    hotReloadScenePath = string.Empty;
+                    hotReloadSceneGUID = string.Empty;
+                }
+
+                EditorPrefs.SetString(kHotReloadScene, hotReloadSceneGUID);
+            }
+
+            using (GUIScope.Disabled(!Application.isPlaying || string.IsNullOrWhiteSpace(hotReloadSceneGUID)))
+            {
+                if (GUILayout.Button(SceneManagementToolText.HotReloadButton) && Application.isPlaying && SceneRootManager.TryGetInstance(out var instance))
+                {
+                    instance.LoadSceneAsync(new AssetReferenceGameObject(hotReloadSceneGUID))
+                        .Forget();
+                }
             }
         }
     }
