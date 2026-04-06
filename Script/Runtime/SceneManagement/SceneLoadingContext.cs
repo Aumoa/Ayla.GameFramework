@@ -36,10 +36,9 @@ public sealed class SceneLoadingContext : IDisposable
     public class AdditiveSceneTask : LoadTask, AddressablesTaskExtensions.IProgressCallback
     {
         private const double kProgressWeightForInstantiate = 0.1;
-        private const double kProgressWeightForActivation = 0.1;
 
         private double m_Progress;
-        private readonly TaskCompletionSource<object?> m_TaskCompletionSource = new();
+        private readonly TaskCompletionSource<SceneAttribute> m_TaskCompletionSource = new();
 
         public AdditiveSceneTask(AssetReferenceComponent<SceneAttribute> sceneAttr, CancellationToken cancellationToken)
         {
@@ -49,6 +48,8 @@ public sealed class SceneLoadingContext : IDisposable
         public override double Progress => m_Progress;
 
         public override Task Task => m_TaskCompletionSource.Task;
+
+        public Task<SceneAttribute> GetTask() => m_TaskCompletionSource.Task;
 
         void AddressablesTaskExtensions.IProgressCallback.OnProgress(double progress)
         {
@@ -72,22 +73,14 @@ public sealed class SceneLoadingContext : IDisposable
                 {
                     while (!loadSceneOperationHandle.IsDone)
                     {
-                        m_Progress = kProgressWeightForInstantiate + loadSceneOperationHandle.PercentComplete * (1 - kProgressWeightForInstantiate - kProgressWeightForActivation);
+                        m_Progress = kProgressWeightForInstantiate + loadSceneOperationHandle.PercentComplete * (1 - kProgressWeightForInstantiate);
                         await Task.WhenAny(Task.Delay(TimeSpan.FromSeconds(0.1)), loadSceneOperationHandle.Task);
                     }
 
-                    var asyncOp = loadSceneOperationHandle.Result.ActivateAsync();
-                    var waitTask = asyncOp.WaitAsync(cancellationToken);
-                    double @base = 1.0 - kProgressWeightForActivation;
-                    while (!asyncOp.isDone)
-                    {
-                        m_Progress = @base + asyncOp.progress * kProgressWeightForActivation;
-                        await Task.WhenAny(Task.Delay(TimeSpan.FromSeconds(0.1)), waitTask);
-                    }
-
                     m_Progress = 1.0;
-                    m_TaskCompletionSource.SetResult(null);
                     component.m_SceneOperationHandle = loadSceneOperationHandle;
+                    component.m_SceneInstance = loadSceneOperationHandle.Result;
+                    m_TaskCompletionSource.SetResult(component);
                 }
                 catch
                 {
@@ -155,9 +148,11 @@ public sealed class SceneLoadingContext : IDisposable
         m_Tasks.Add(task);
     }
 
-    public void AddAdditive(AssetReferenceComponent<SceneAttribute> sceneAttr)
+    public AdditiveSceneTask AddAdditive(AssetReferenceComponent<SceneAttribute> sceneAttr)
     {
-        m_Tasks.Add(new AdditiveSceneTask(sceneAttr, m_CancellationToken));
+        var task = new AdditiveSceneTask(sceneAttr, m_CancellationToken);
+        m_Tasks.Add(task);
+        return task;
     }
 
     internal Task WhenAll() => Task.WhenAll(m_Tasks.Select(t => t.Task));

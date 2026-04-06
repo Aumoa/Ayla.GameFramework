@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using UnityEngine.ResourceManagement.AsyncOperations;
 using UnityEngine.ResourceManagement.ResourceProviders;
+using UnityEngine.SceneManagement;
 
 namespace Ayla
 {
@@ -11,6 +12,7 @@ namespace Ayla
 
         private AsyncOperationHandle<GameObject> m_AssetOperationHandle;
         internal AsyncOperationHandle<SceneInstance> m_SceneOperationHandle;
+        internal SceneInstance m_SceneInstance;
 
         void IAssetReferenceStorage.SetAsyncOperationHandle(AsyncOperationHandle<GameObject> op)
         {
@@ -31,5 +33,7 @@ namespace Ayla
                 m_SceneOperationHandle.Release();
             }
         }
+
+        public Scene GetScene() => m_SceneInstance.Scene;
     }
 }
