@@ -1,13 +1,11 @@
-﻿using UnityEngine.AddressableAssets;
-
-namespace Ayla
+﻿namespace Ayla
 {
     public class SceneRootManagerData : SingletonData
     {
-        public AssetReferenceGameObject InitialScene;
+        public AssetReferenceComponent<SceneRoot> InitialScene;
 
 #if UNITY_EDITOR
-        public AssetReferenceGameObject EditorOverrideScene;
+        public AssetReferenceComponent<SceneRoot> EditorOverrideScene;
 #endif
     }
 }

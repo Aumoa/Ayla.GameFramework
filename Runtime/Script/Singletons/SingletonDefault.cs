@@ -6,13 +6,12 @@ using UnityEngine;
 
 namespace Ayla
 {
-    [CreateAssetMenu(fileName = "SingletonDefault.asset", menuName = "Ayla/Singletons/Singleton Default")]
     public class SingletonDefault : ScriptableObject
     {
-        public const string kDefaultAssetPath = "Assets/Game/Settings/SingletonDefault.asset";
+        public const string kDefaultAssetPath = "Assets/Settings/SingletonDefault.asset";
 
         [SerializeField, HideInInspector]
-        private OrderedDictionary<string, SingletonData>? m_SingletonDatas;
+        private OrderedDictionary<string, SingletonData> m_SingletonDatas = null!;
 
         private readonly Dictionary<Type, SingletonData> m_DataMapCache = new();
 
