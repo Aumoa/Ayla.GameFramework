@@ -2,11 +2,14 @@
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
+using UnityEngine.ResourceManagement.AsyncOperations;
+using UnityEngine.ResourceManagement.ResourceProviders;
 using UnityEngine.SceneManagement;
 using Debug = UnityEngine.Debug;
 
@@ -140,6 +143,7 @@ namespace Ayla
                 // Set the new scene root active after the old scene is completely unloaded to avoid potential issues caused by having multiple active scene roots.
                 sceneRoot.gameObject.SetActive(true);
                 sceneRoot.m_AssetOperationHandle = loadAssetOp;
+                sceneRoot.CheckAwakeCalled();
 
                 using (var loadingContext = new SceneLoadingContext(cancellationToken))
                 {
@@ -154,6 +158,50 @@ namespace Ayla
             {
                 m_Semaphore.Release();
             }
+        }
+
+        public class AdditiveSceneAsyncLoadOperation
+        {
+            private readonly SceneReference m_Scene;
+            private readonly CancellationToken m_CancellationToken;
+
+            internal AdditiveSceneAsyncLoadOperation(SceneReference scene, CancellationToken cancellationToken = default)
+            {
+                m_Scene = scene;
+                m_CancellationToken = cancellationToken;
+                Task = StartOperation();
+            }
+
+            public Task<AsyncOperationHandle<SceneInstance>> Task { get; }
+
+            public double Progress { get; private set; }
+
+            private async Task<AsyncOperationHandle<SceneInstance>> StartOperation()
+            {
+                var loadSceneOperationHandle = m_Scene.LoadSceneAsync(LoadSceneMode.Additive);
+                try
+                {
+                    while (!loadSceneOperationHandle.IsDone)
+                    {
+                        Progress = loadSceneOperationHandle.PercentComplete;
+                        await System.Threading.Tasks.Task.WhenAny(System.Threading.Tasks.Task.Delay(TimeSpan.FromSeconds(0.1), m_CancellationToken), loadSceneOperationHandle.Task);
+                        m_CancellationToken.ThrowIfCancellationRequested();
+                    }
+
+                    Progress = 1.0;
+                    return loadSceneOperationHandle;
+                }
+                catch
+                {
+                    loadSceneOperationHandle.ReleaseHandleOnCompletion();
+                    throw;
+                }
+            }
+        }
+
+        public AdditiveSceneAsyncLoadOperation LoadAdditiveAsync(SceneReference scene, CancellationToken cancellationToken = default)
+        {
+            return new AdditiveSceneAsyncLoadOperation(scene, cancellationToken);
         }
 
         public SceneRoot? GetCurrentSceneRoot()

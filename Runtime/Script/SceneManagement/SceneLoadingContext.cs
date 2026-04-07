@@ -6,7 +6,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using Object = UnityEngine.Object;
 
 namespace Ayla
@@ -70,25 +69,19 @@ namespace Ayla
                         throw new InvalidOperationException("The scene reference in the SceneAttribute component is not valid.");
                     }
 
-                    var loadSceneOperationHandle = component.Scene.LoadSceneAsync(LoadSceneMode.Additive);
-                    try
-                    {
-                        while (!loadSceneOperationHandle.IsDone)
-                        {
-                            m_Progress = kProgressWeightForInstantiate + loadSceneOperationHandle.PercentComplete * (1 - kProgressWeightForInstantiate);
-                            await Task.WhenAny(Task.Delay(TimeSpan.FromSeconds(0.1)), loadSceneOperationHandle.Task);
-                        }
+                    var asyncOp = SceneRootManager.Instance.LoadAdditiveAsync(component.Scene, cancellationToken);
+                    var asyncTask = asyncOp.Task;
 
-                        m_Progress = 1.0;
-                        component.m_SceneOperationHandle = loadSceneOperationHandle;
-                        component.m_SceneInstance = loadSceneOperationHandle.Result;
-                        m_TaskCompletionSource.SetResult(component);
-                    }
-                    catch
+                    while (!asyncTask.IsCompleted)
                     {
-                        loadSceneOperationHandle.ReleaseHandleOnCompletion();
-                        throw;
+                        m_Progress = kProgressWeightForInstantiate + asyncOp.Progress * (1 - kProgressWeightForInstantiate);
+                        await Task.WhenAny(Task.Delay(TimeSpan.FromSeconds(0.1), cancellationToken), asyncTask);
                     }
+
+                    m_Progress = 1.0;
+                    component.m_SceneOperationHandle = asyncTask.Result;
+                    component.m_SceneInstance = component.m_SceneOperationHandle.Result;
+                    m_TaskCompletionSource.SetResult(component);
                 }
                 catch (OperationCanceledException)
                 {
