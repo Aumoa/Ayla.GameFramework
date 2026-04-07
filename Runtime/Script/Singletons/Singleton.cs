@@ -39,6 +39,8 @@ namespace Ayla
 
         public readonly SingletonManager Manager = ConstructorContext.Args.Value.Owner;
 
+        internal bool m_IsManaged;
+
         public virtual ValueTask InitializeAsync(CancellationToken cancellationToken = default)
         {
             return default;
@@ -130,7 +132,7 @@ namespace Ayla
 
         protected virtual void Dispose(bool disposing)
         {
-            Debug.Assert(m_Called == (int)(CallState.Awake | CallState.OnEnable | CallState.Start | CallState.OnDisable | CallState.OnDestroy), $"Basecall missing for singleton of type {GetType()}. CallState: {m_Called}");
+            Debug.Assert(!m_IsManaged || m_Called == (int)(CallState.Awake | CallState.OnEnable | CallState.Start | CallState.OnDisable | CallState.OnDestroy), $"Basecall missing for singleton of type {GetType()}. CallState: {m_Called}");
         }
 
         protected virtual void Awake()

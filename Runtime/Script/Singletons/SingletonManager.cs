@@ -91,7 +91,9 @@ namespace Ayla
                     {
                         try
                         {
-                            singletons.Add((Singleton)gameObject.AddComponent(type));
+                            var singleton = (Singleton)gameObject.AddComponent(type);
+                            singleton.m_IsManaged = true;
+                            singletons.Add(singleton);
                         }
                         catch (Exception e)
                         {
@@ -154,7 +156,7 @@ namespace Ayla
 #if UNITY_EDITOR
             return new ValueTask<SingletonDefault>(AssetDatabase.LoadAssetAtPath<SingletonDefault>(SingletonDefault.kDefaultAssetPath));
 #else
-            return await Addressables.LoadAssetAsync<SingletonDefault>("Assets/Game/Settings/SingletonDefault.asset").Task;
+            return await Addressables.LoadAssetAsync<SingletonDefault>(SingletonDefault.kDefaultAssetPath).Task;
 #endif
         }
 
