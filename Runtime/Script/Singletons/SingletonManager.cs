@@ -7,7 +7,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.Pool;
 #if !UNITY_EDITOR
-using UnityEngine.AddressableAssets;
+using Object = UnityEngine.Object;
 #endif
 
 namespace Ayla
@@ -77,11 +77,13 @@ namespace Ayla
             ReflectionUtility.GetTypes(t => t.IsAssignableTo(typeof(Singleton)) && !t.IsAbstract, singletonTypes);
             using var scope2 = ListPool<Singleton>.Get(out var singletons);
 
-            using (new TimeLogScope("Load SingletonDefault asset took {0}"))
+            var singletonDefault = LoadSingletonDefaultAsset();
+            if (singletonDefault == null)
             {
-                var singletonDefault = await LoadSingletonDefaultAssetAsync();
-                Singleton.ConstructorContext.Begin(new Singleton.ConstructorArguments(manager, singletonDefault));
+                throw new InvalidOperationException("Failed to load SingletonDefault asset. Please ensure it exists at the specified path.");
             }
+
+            Singleton.ConstructorContext.Begin(new Singleton.ConstructorArguments(manager, singletonDefault));
 
             try
             {
@@ -147,16 +149,12 @@ namespace Ayla
             Debug.LogFormat("Initialized {0} singleton(s).", singletons.Count);
         }
 
-        private static
-#if !UNITY_EDITOR
-            async
-#endif
-            ValueTask<SingletonDefault> LoadSingletonDefaultAssetAsync()
+        private static SingletonDefault LoadSingletonDefaultAsset()
         {
 #if UNITY_EDITOR
-            return new ValueTask<SingletonDefault>(AssetDatabase.LoadAssetAtPath<SingletonDefault>(SingletonDefault.kDefaultAssetPath));
+            return AssetDatabase.LoadAssetAtPath<SingletonDefault>(SingletonDefault.kDefaultAssetPath);
 #else
-            return await Addressables.LoadAssetAsync<SingletonDefault>(SingletonDefault.kDefaultAssetPath).Task;
+            return SingletonDefault.PreloadedAsset;
 #endif
         }
 

@@ -7,7 +7,7 @@ using Object = UnityEngine.Object;
 
 namespace Ayla
 {
-    public static class SingletonDefaultRegister
+    internal static class SingletonDefaultRegister
     {
         private static Editor? s_CachedEditor;
 

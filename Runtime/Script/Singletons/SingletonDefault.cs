@@ -15,6 +15,17 @@ namespace Ayla
 
         private readonly Dictionary<Type, SingletonData> m_DataMapCache = new();
 
+#if !UNITY_EDITOR
+        private static SingletonDefault s_PreloadedAsset;
+
+        private void OnEnable()
+        {
+            s_PreloadedAsset = this;
+        }
+
+        public static SingletonDefault PreloadedAsset => s_PreloadedAsset;
+#endif
+
 #if UNITY_EDITOR
         private void OnValidate()
         {
