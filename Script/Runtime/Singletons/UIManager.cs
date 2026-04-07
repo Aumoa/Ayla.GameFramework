@@ -22,6 +22,7 @@ public class UIManager : Singleton<UIManager>
 
     protected override void OnDestroy()
     {
+        base.OnDestroy();
         if (m_UIRoot)
         {
             Destroy(m_UIRoot.gameObject);

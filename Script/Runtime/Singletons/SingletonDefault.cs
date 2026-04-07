@@ -10,7 +10,7 @@ namespace Ayla
         public const string kDefaultAssetPath = "Assets/Game/Settings/SingletonDefault.asset";
 
         [SerializeField, HideInInspector]
-        private OrderedDictionary<string, SingletonData> m_SingletonDatas;
+        private OrderedDictionary<string, SingletonData>? m_SingletonDatas;
 
         private readonly Dictionary<Type, SingletonData> m_DataMapCache = new();
 
@@ -28,6 +28,11 @@ namespace Ayla
 
         public SingletonData? GetData(Type behaviourType)
         {
+            if (m_SingletonDatas == null)
+            {
+                throw new InvalidOperationException("Serialization error: SingletonDatas is null.");
+            }
+
             if (m_DataMapCache.TryGetValue(behaviourType, out var data))
             {
                 return data;
