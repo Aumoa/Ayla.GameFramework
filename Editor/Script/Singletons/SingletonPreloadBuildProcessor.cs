@@ -5,7 +5,7 @@ using UnityEditor.Build.Reporting;
 
 namespace Ayla
 {
-    internal class PreloadBuildProcessor : IPreprocessBuildWithReport
+    internal class SingletonPreloadBuildProcessor : IPreprocessBuildWithReport
     {
         public int callbackOrder => 0;
 
@@ -17,15 +17,7 @@ namespace Ayla
                 throw new BuildPlayerWindow.BuildMethodException("SingletonDefault asset not found at path: " + SingletonDefault.kDefaultAssetPath);
             }
 
-            var timerMixerAsset = AssetDatabase.LoadAssetAtPath<TimerMixer>(TimerMixer.kDefaultAssetPath);
-            if (timerMixerAsset == null)
-            {
-                throw new BuildPlayerWindow.BuildMethodException("TimerMixer asset not found at path: " + TimerMixer.kDefaultAssetPath);
-            }
-
-            var preloadAssets = PlayerSettings.GetPreloadedAssets().ToList();
-            preloadAssets.Add(singletonDefaultAsset);
-            preloadAssets.Add(timerMixerAsset);
+            var preloadAssets = PlayerSettings.GetPreloadedAssets().Append(singletonDefaultAsset);
             PlayerSettings.SetPreloadedAssets(preloadAssets.ToArray());
         }
     }
