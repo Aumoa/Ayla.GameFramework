@@ -9,7 +9,7 @@ namespace Ayla
     public class SceneAttribute : MonoBehaviour, IAssetReferenceStorage
     {
         public SceneAttributeType Type;
-        public SceneReference Scene;
+        public SceneReference? Scene;
 
         private readonly List<AssetReferenceAsyncContext> m_AssetOperationHandle = new();
         internal Scene m_SceneLoaded;

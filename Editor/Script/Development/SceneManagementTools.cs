@@ -10,7 +10,7 @@ namespace Ayla
     {
         private class Serializer : ScriptableObject
         {
-            public AssetReference<SceneRoot> Ref;
+            public AssetReference<SceneRoot>? Ref;
         }
 
         private static SerializedProperty? s_Serializer;
@@ -115,7 +115,10 @@ namespace Ayla
 
                         AssetReferenceHelper.SetEditorAsset(s_Serializer, hotReloadScene);
                         var sr = ((Serializer)s_Serializer.serializedObject.targetObject).Ref;
-                        _ = SceneRootManager.Instance.LoadSceneAsync(sr);
+                        if (sr != null)
+                        {
+                            _ = SceneRootManager.Instance.LoadSceneAsync(sr);
+                        }
                     }
                 }
             }

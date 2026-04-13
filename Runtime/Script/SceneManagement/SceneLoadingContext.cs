@@ -60,7 +60,7 @@ namespace Ayla
                 try
                 {
                     component = await sceneAttr.InstantiateAsync(cancellationToken).Task;
-                    if (!component.Scene.IsValid)
+                    if (component.Scene == null || !component.Scene.IsValid)
                     {
                         throw new InvalidOperationException("The scene reference in the SceneAttribute component is not valid.");
                     }
