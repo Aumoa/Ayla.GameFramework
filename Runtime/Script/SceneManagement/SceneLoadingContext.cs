@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using Object = UnityEngine.Object;
 
 namespace Ayla
@@ -34,14 +35,14 @@ namespace Ayla
             public abstract Task Task { get; }
         }
 
-        public class AdditiveSceneTask : LoadTask, AddressablesTaskExtensions.IProgressCallback
+        public class AdditiveSceneTask : LoadTask
         {
             private const double kProgressWeightForInstantiate = 0.1;
 
             private double m_Progress;
             private readonly TaskCompletionSource<SceneAttribute> m_TaskCompletionSource = new();
 
-            public AdditiveSceneTask(AssetReferenceComponent<SceneAttribute> sceneAttr, CancellationToken cancellationToken)
+            public AdditiveSceneTask(AssetReference<SceneAttribute> sceneAttr, CancellationToken cancellationToken)
             {
                 Start(sceneAttr, cancellationToken);
             }
@@ -52,24 +53,19 @@ namespace Ayla
 
             public Task<SceneAttribute> GetTask() => m_TaskCompletionSource.Task;
 
-            void AddressablesTaskExtensions.IProgressCallback.OnProgress(double progress)
-            {
-                m_Progress = progress * kProgressWeightForInstantiate;
-            }
-
-            private async void Start(AssetReferenceComponent<SceneAttribute> sceneAttr, CancellationToken cancellationToken)
+            private async void Start(AssetReference<SceneAttribute> sceneAttr, CancellationToken cancellationToken)
             {
                 SceneAttribute? component = null;
 
                 try
                 {
-                    component = await sceneAttr.InstantiateBoundGameObjectAsync<SceneAttribute>(this, cancellationToken);
-                    if (!component.Scene.RuntimeKeyIsValid())
+                    component = await sceneAttr.InstantiateAsync(cancellationToken).Task;
+                    if (!component.Scene.IsValid)
                     {
                         throw new InvalidOperationException("The scene reference in the SceneAttribute component is not valid.");
                     }
 
-                    var asyncOp = SceneRootManager.Instance.LoadAdditiveAsync(component.Scene, cancellationToken);
+                    var asyncOp = component.Scene.LoadSceneAsync(LoadSceneMode.Additive, cancellationToken: cancellationToken);
                     var asyncTask = asyncOp.Task;
 
                     while (!asyncTask.IsCompleted)
@@ -79,8 +75,7 @@ namespace Ayla
                     }
 
                     m_Progress = 1.0;
-                    component.m_SceneOperationHandle = asyncTask.Result;
-                    component.m_SceneInstance = component.m_SceneOperationHandle.Result;
+                    component.m_SceneLoaded = asyncTask.Result;
                     m_TaskCompletionSource.SetResult(component);
                 }
                 catch (OperationCanceledException)
@@ -143,7 +138,7 @@ namespace Ayla
             m_Tasks.Add(task);
         }
 
-        public AdditiveSceneTask AddAdditive(AssetReferenceComponent<SceneAttribute> sceneAttr)
+        public AdditiveSceneTask AddAdditive(AssetReference<SceneAttribute> sceneAttr)
         {
             var task = new AdditiveSceneTask(sceneAttr, m_CancellationToken);
             m_Tasks.Add(task);

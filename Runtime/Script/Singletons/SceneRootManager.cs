@@ -2,14 +2,10 @@
 
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
-using UnityEngine.AddressableAssets;
-using UnityEngine.ResourceManagement.AsyncOperations;
-using UnityEngine.ResourceManagement.ResourceProviders;
 using UnityEngine.SceneManagement;
 using Debug = UnityEngine.Debug;
 
@@ -25,10 +21,7 @@ namespace Ayla
         protected override void OnEnable()
         {
             base.OnEnable();
-            if (m_Semaphore == null)
-            {
-                m_Semaphore = new SemaphoreSlim(1);
-            }
+            m_Semaphore ??= new SemaphoreSlim(1);
         }
 
         protected override void OnDestroy()
@@ -39,16 +32,16 @@ namespace Ayla
 
         public override ValueTask StartAsync(CancellationToken cancellationToken = default)
         {
-            if (Data.InitialScene.RuntimeKeyIsValid() == false)
+            if (Data.InitialScene.IsValid == false)
             {
                 Debug.LogErrorFormat("Initial scene asset reference is not set or invalid. Please set a valid scene asset reference in the SceneRootManagerData.");
                 return default;
             }
 
-            AssetReferenceGameObject initialScene = Data.InitialScene;
+            AssetReference<SceneRoot> initialScene = Data.InitialScene;
 
 #if UNITY_EDITOR
-            if (Data.EditorOverrideScene.RuntimeKeyIsValid())
+            if (Data.EditorOverrideScene.IsValid)
             {
                 initialScene = Data.EditorOverrideScene;
             }
@@ -68,7 +61,7 @@ namespace Ayla
             m_SceneRoots.Remove(sceneRoot);
         }
 
-        public async ValueTask LoadSceneAsync(AssetReferenceGameObject sceneRootAsset, CancellationToken cancellationToken = default)
+        public async ValueTask LoadSceneAsync(AssetReference<SceneRoot> sceneRootAsset, CancellationToken cancellationToken = default)
         {
             await m_Semaphore.WaitAsync(cancellationToken);
 
@@ -113,25 +106,23 @@ namespace Ayla
                     SceneManager.SetActiveScene(emptyScene);
                     sceneRoot = InactiveObject.Instantiate(sceneRootPrefab);
 
-                    using (var unloadingContext = new SceneUnloadingContext(emptyScene, cancellationToken))
+                    using var unloadingContext = new SceneUnloadingContext(emptyScene, cancellationToken);
+                    bool hasPreviousScene = previousSceneRoot != null;
+                    if (hasPreviousScene)
                     {
-                        bool hasPreviousScene = previousSceneRoot != null;
-                        if (hasPreviousScene)
-                        {
-                            await previousSceneRoot!.UnloadingSceneAsync(unloadingContext, cancellationToken);
-                        }
-                        else
-                        {
-                            unloadingContext.AddUnloadAllScenes();
-                        }
+                        await previousSceneRoot!.UnloadingSceneAsync(unloadingContext, cancellationToken);
+                    }
+                    else
+                    {
+                        unloadingContext.AddUnloadAllScenes();
+                    }
 
-                        await unloadingContext.WhenAll().WaitAsync(cancellationToken);
+                    await unloadingContext.WhenAll().WaitAsync(cancellationToken);
 
-                        if (hasPreviousScene)
-                        {
-                            // Object destroyal and scene unloading will cause OnDisable to be called on the previous scene root, so we check if OnDisable has been called to ensure that all related cleanup has been done before proceeding.
-                            previousSceneRoot!.CheckOnDestroyCalled();
-                        }
+                    if (hasPreviousScene)
+                    {
+                        // Object destroyal and scene unloading will cause OnDisable to be called on the previous scene root, so we check if OnDisable has been called to ensure that all related cleanup has been done before proceeding.
+                        previousSceneRoot!.CheckOnDestroyCalled();
                     }
                 }
                 catch
@@ -142,7 +133,7 @@ namespace Ayla
 
                 // Set the new scene root active after the old scene is completely unloaded to avoid potential issues caused by having multiple active scene roots.
                 sceneRoot.gameObject.SetActive(true);
-                sceneRoot.m_AssetOperationHandle = loadAssetOp;
+                sceneRoot.AddAssetReference(loadAssetOp);
                 sceneRoot.CheckAwakeCalled();
 
                 using (var loadingContext = new SceneLoadingContext(cancellationToken))
@@ -158,50 +149,6 @@ namespace Ayla
             {
                 m_Semaphore.Release();
             }
-        }
-
-        public class AdditiveSceneAsyncLoadOperation
-        {
-            private readonly SceneReference m_Scene;
-            private readonly CancellationToken m_CancellationToken;
-
-            internal AdditiveSceneAsyncLoadOperation(SceneReference scene, CancellationToken cancellationToken = default)
-            {
-                m_Scene = scene;
-                m_CancellationToken = cancellationToken;
-                Task = StartOperation();
-            }
-
-            public Task<AsyncOperationHandle<SceneInstance>> Task { get; }
-
-            public double Progress { get; private set; }
-
-            private async Task<AsyncOperationHandle<SceneInstance>> StartOperation()
-            {
-                var loadSceneOperationHandle = m_Scene.LoadSceneAsync(LoadSceneMode.Additive);
-                try
-                {
-                    while (!loadSceneOperationHandle.IsDone)
-                    {
-                        Progress = loadSceneOperationHandle.PercentComplete;
-                        await System.Threading.Tasks.Task.WhenAny(System.Threading.Tasks.Task.Delay(TimeSpan.FromSeconds(0.1), m_CancellationToken), loadSceneOperationHandle.Task);
-                        m_CancellationToken.ThrowIfCancellationRequested();
-                    }
-
-                    Progress = 1.0;
-                    return loadSceneOperationHandle;
-                }
-                catch
-                {
-                    loadSceneOperationHandle.ReleaseHandleOnCompletion();
-                    throw;
-                }
-            }
-        }
-
-        public AdditiveSceneAsyncLoadOperation LoadAdditiveAsync(SceneReference scene, CancellationToken cancellationToken = default)
-        {
-            return new AdditiveSceneAsyncLoadOperation(scene, cancellationToken);
         }
 
         public SceneRoot? GetCurrentSceneRoot()

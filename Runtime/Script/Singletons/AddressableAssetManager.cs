@@ -1,9 +1,10 @@
 ﻿#nullable enable
 
+#if WITH_ADDRESSABLES
+
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
-using UnityEngine.AddressableAssets;
 
 namespace Ayla
 {
@@ -16,3 +17,5 @@ namespace Ayla
         }
     }
 }
+
+#endif

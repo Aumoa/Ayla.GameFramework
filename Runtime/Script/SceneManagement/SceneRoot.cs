@@ -1,16 +1,22 @@
-﻿using System.Threading;
+﻿using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
-using UnityEngine.ResourceManagement.AsyncOperations;
 
 namespace Ayla
 {
-    public class SceneRoot : MonoBehaviour
+    public class SceneRoot : MonoBehaviour, IAssetReferenceStorage
     {
         private bool m_AwakeCalled;
         private bool m_OnDestroyCalled;
 
-        internal AsyncOperationHandle<GameObject> m_AssetOperationHandle;
+        private readonly List<AssetReferenceAsyncContext> m_AssetOperationHandle = new();
+
+        public void AddAssetReference(AssetReferenceAsyncContext op)
+        {
+            Debug.Assert(didAwake, "Asset reference must be set after Awake. Please ensure that the asset reference is set during or after the Awake phase.");
+            m_AssetOperationHandle.Add(op);
+        }
 
         protected virtual void Awake()
         {
@@ -28,11 +34,17 @@ namespace Ayla
 
         protected virtual void OnDestroy()
         {
+            foreach (var aop in m_AssetOperationHandle)
+            {
+                aop.Release();
+            }
+
             if (SceneRootManager.TryGetInstance(out var instance))
             {
                 instance.UnregisterSceneRoot(this);
             }
 
+            m_AssetOperationHandle.Clear();
             m_OnDestroyCalled = true;
         }
 

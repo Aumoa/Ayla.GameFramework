@@ -2,16 +2,25 @@
 
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.AddressableAssets;
 
 namespace Ayla
 {
     [GameFrameworkCategory, DefaultOrder(0)]
     internal class SceneManagementTools : DevelopmentTools
     {
+        private class Serializer : ScriptableObject
+        {
+            public AssetReference<SceneRoot> Ref;
+        }
+
+        private static SerializedProperty? s_Serializer;
+
         private GUILayoutOption? m_NotExpandWidth;
 
         private SingletonDefault? m_DefaultAsset;
+        private SerializedObject? m_SceneRootSerializedCache;
+        private SerializedProperty? m_SceneRootInitialSceneCache;
+        private SerializedProperty? m_SceneRootEditorOverrideSceneCache;
 
         protected override void OnGUI(in DrawingArgs drawingArgs)
         {
@@ -42,33 +51,26 @@ namespace Ayla
             var data = (SceneRootManagerData?)m_DefaultAsset.GetData(typeof(SceneRootManager));
             if (data == null)
             {
+                m_SceneRootSerializedCache = null;
+                m_SceneRootInitialSceneCache = null;
+                m_SceneRootEditorOverrideSceneCache = null;
                 GUILayout.Label(SingletonDefaultText.DataNotFoundLabel);
                 return;
             }
 
-            using (GUIScope.Changed())
+            if (m_SceneRootSerializedCache == null || m_SceneRootInitialSceneCache == null || m_SceneRootSerializedCache.targetObject != data)
             {
-                var initialScene = data.InitialScene.editorAsset;
-                var newInitialScene = (SceneRoot?)EditorGUILayout.ObjectField(SingletonDefaultText.InitialSceneLabel, initialScene ? initialScene.GetComponent<SceneRoot>() : null, typeof(SceneRoot), false);
-                if (GUI.changed)
-                {
-                    Undo.RecordObject(data, "Change initial scene");
-                    data.InitialScene.SetEditorAsset(newInitialScene ? newInitialScene.gameObject : null!);
-                    EditorUtility.SetDirty(data);
-                }
+                m_SceneRootSerializedCache = new SerializedObject(data);
+                m_SceneRootInitialSceneCache = m_SceneRootSerializedCache.FindProperty("InitialScene");
+                m_SceneRootEditorOverrideSceneCache = m_SceneRootSerializedCache.FindProperty("EditorOverrideScene");
             }
 
-            using (GUIScope.Changed())
-            {
-                var editorOverrideScene = data.EditorOverrideScene.editorAsset;
-                var newEditorOverrideScene = (SceneRoot?)EditorGUILayout.ObjectField(SingletonDefaultText.EditorOverrideSceneLabel, editorOverrideScene ? editorOverrideScene.GetComponent<SceneRoot>() : null, typeof(SceneRoot), false);
-                if (GUI.changed)
-                {
-                    Undo.RecordObject(data, "Change editor override scene");
-                    data.EditorOverrideScene.SetEditorAsset(newEditorOverrideScene ? newEditorOverrideScene.gameObject : null!);
-                    EditorUtility.SetDirty(data);
-                }
-            }
+            m_SceneRootSerializedCache.Update();
+
+            EditorGUILayout.PropertyField(m_SceneRootInitialSceneCache, EditorGUIUtility.TrTempContent(SingletonDefaultText.InitialSceneLabel));
+            EditorGUILayout.PropertyField(m_SceneRootEditorOverrideSceneCache, EditorGUIUtility.TrTempContent(SingletonDefaultText.EditorOverrideSceneLabel));
+
+            m_SceneRootSerializedCache.ApplyModifiedProperties();
 
             const string kHotReloadScene = nameof(SceneManagementTools) + "." + "m_HotReloadScene";
             var hotReloadSceneGUID = EditorPrefs.GetString(kHotReloadScene);
@@ -77,9 +79,21 @@ namespace Ayla
             using (GUIScope.Changed())
             using (EditorGUIScope.Horizontal())
             {
-                hotReloadScene = (SceneRoot?)EditorGUILayout.ObjectField(SceneManagementToolText.HotReloadSceneLabel, hotReloadScene, typeof(SceneRoot), false);
+                if (s_Serializer == null || s_Serializer.serializedObject == null || s_Serializer.serializedObject.targetObject == null)
+                {
+                    var so = ScriptableObject.CreateInstance<Serializer>();
+                    Object.DontDestroyOnLoad(so);
+                    var so2 = new SerializedObject(so);
+                    s_Serializer = so2.FindProperty("Ref");
+                }
+
+                s_Serializer.serializedObject.Update();
+                EditorGUILayout.PropertyField(s_Serializer, EditorGUIUtility.TrTempContent(SceneManagementToolText.HotReloadSceneLabel));
+                s_Serializer.serializedObject.ApplyModifiedProperties();
+
                 if (GUI.changed)
                 {
+                    hotReloadScene = AssetReferenceHelper.GetEditorAsset<SceneRoot>(s_Serializer);
                     if (hotReloadScene)
                     {
                         hotReloadScenePath = AssetDatabase.GetAssetPath(hotReloadScene);
@@ -98,8 +112,10 @@ namespace Ayla
                 {
                     if (GUILayout.Button(SceneManagementToolText.HotReloadButton) && Application.isPlaying && SceneRootManager.TryGetInstance(out var instance))
                     {
-                        instance.LoadSceneAsync(new AssetReferenceGameObject(hotReloadSceneGUID))
-                            .Forget();
+
+                        AssetReferenceHelper.SetEditorAsset(s_Serializer, hotReloadScene);
+                        var sr = ((Serializer)s_Serializer.serializedObject.targetObject).Ref;
+                        _ = SceneRootManager.Instance.LoadSceneAsync(sr);
                     }
                 }
             }

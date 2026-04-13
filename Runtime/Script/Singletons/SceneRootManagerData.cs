@@ -2,10 +2,10 @@
 {
     public class SceneRootManagerData : SingletonData
     {
-        public AssetReferenceComponent<SceneRoot> InitialScene;
+        public AssetReference<SceneRoot> InitialScene;
 
 #if UNITY_EDITOR
-        public AssetReferenceComponent<SceneRoot> EditorOverrideScene;
+        public AssetReference<SceneRoot> EditorOverrideScene;
 #endif
     }
 }

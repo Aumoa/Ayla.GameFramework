@@ -1,6 +1,7 @@
-﻿using UnityEngine;
-using UnityEngine.ResourceManagement.AsyncOperations;
-using UnityEngine.ResourceManagement.ResourceProviders;
+﻿#nullable enable
+
+using System.Collections.Generic;
+using UnityEngine;
 using UnityEngine.SceneManagement;
 
 namespace Ayla
@@ -10,30 +11,25 @@ namespace Ayla
         public SceneAttributeType Type;
         public SceneReference Scene;
 
-        private AsyncOperationHandle<GameObject> m_AssetOperationHandle;
-        internal AsyncOperationHandle<SceneInstance> m_SceneOperationHandle;
-        internal SceneInstance m_SceneInstance;
+        private readonly List<AssetReferenceAsyncContext> m_AssetOperationHandle = new();
+        internal Scene m_SceneLoaded;
 
-        void IAssetReferenceStorage.SetAsyncOperationHandle(AsyncOperationHandle<GameObject> op)
+        public void AddAssetReference(AssetReferenceAsyncContext op)
         {
-            Debug.Assert(m_AssetOperationHandle.IsValid() == false);
-            Debug.Assert(didAwake);
-            m_AssetOperationHandle = op;
+            Debug.Assert(didAwake, "Asset reference must be set after Awake. Please ensure that the asset reference is set during or after the Awake phase.");
+            m_AssetOperationHandle.Add(op);
         }
 
         protected virtual void OnDestroy()
         {
-            if (m_AssetOperationHandle.IsValid())
+            foreach (var aop in m_AssetOperationHandle)
             {
-                m_AssetOperationHandle.Release();
+                aop.Release();
             }
 
-            if (m_SceneOperationHandle.IsValid())
-            {
-                m_SceneOperationHandle.Release();
-            }
+            m_AssetOperationHandle.Clear();
         }
 
-        public Scene GetScene() => m_SceneInstance.Scene;
+        public Scene GetScene() => m_SceneLoaded;
     }
 }
