@@ -19,7 +19,7 @@ namespace Ayla
 
         public bool IsDone => Progress >= 1.0;
 
-        internal SceneReferenceAsyncContext(AsyncOperation asyncOp, string sceneName, CancellationToken cancellationToken)
+        internal SceneReferenceAsyncContext(AsyncOperation asyncOp, int buildIndex, CancellationToken cancellationToken)
         {
             Task = Start();
 
@@ -57,19 +57,9 @@ namespace Ayla
 
             Scene GetLoadedScene()
             {
-                var sceneCount = SceneManager.sceneCount;
-                Scene? lastScene = null;
-                for (int i = 0; i < sceneCount; ++i)
-                {
-                    var sceneAt = SceneManager.GetSceneAt(i);
-                    if (sceneAt.name == sceneName)
-                    {
-                        lastScene = sceneAt;
-                    }
-                }
-
-                Debug.Assert(lastScene.HasValue, "The scene was loaded but cannot be found in the loaded scenes. This may indicate an issue with the scene loading process.");
-                return lastScene!.Value;
+                var sceneAt = SceneManager.GetSceneByBuildIndex(buildIndex);
+                Debug.Assert(sceneAt.buildIndex != -1, "The scene was loaded but cannot be found in the loaded scenes. This may indicate an issue with the scene loading process.");
+                return sceneAt;
             }
         }
     }

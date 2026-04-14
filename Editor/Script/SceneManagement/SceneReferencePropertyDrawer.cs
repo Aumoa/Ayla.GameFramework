@@ -1,42 +1,35 @@
-﻿﻿#nullable enable
+﻿#nullable enable
 
-using System;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
-using Object = UnityEngine.Object;
 
 namespace Ayla
 {
-    [CustomPropertyDrawer(typeof(AssetReference<>), true)]
-    internal class AssetReferencePropertyDrawer : PropertyDrawer
+    [CustomPropertyDrawer(typeof(SceneReference))]
+    public class SceneReferencePropertyDrawer : PropertyDrawer
     {
         private SerializedProperty? m_CachedProperty;
         private SerializedProperty? m_AssetProperty;
-        private SerializedProperty? m_AssetGUIDProperty;
+        private SerializedProperty? m_BuildIndexProperty;
 
-        private Type? m_CachedAssetType;
-        private string? m_CachedGUID;
-        private Object? m_CachedEditorAsset;
+        private SceneAsset? m_CachedEditorAsset;
+        private GUIContent? m_TempContent;
 
-        private static readonly Color s_LinkedColor = new(0.7f, 0.85f, 1f);
 #if WITH_ADDRESSABLES
-        private static readonly Color s_SoftReferenceColor = new(0.7f, 1f, 0.7f);
+        private SerializedProperty? m_AssetGUIDProperty;
+        private string? m_CachedGUID;
 #endif
 
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
         {
+            TryCacheProperty(property);
             return EditorGUIUtility.singleLineHeight;
         }
 
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
             TryCacheProperty(property);
-
-            if (m_CachedAssetType == null)
-            {
-                EditorGUI.LabelField(position, label.text, "Invalid AssetReference");
-                return;
-            }
 
             if (property.isExpanded)
             {
@@ -49,21 +42,37 @@ namespace Ayla
             var typeLabel = GetAssetTypeLabel(assetType);
             var displayLabel = string.IsNullOrEmpty(typeLabel)
                 ? label
-                : new GUIContent($"{label.text} {typeLabel}", label.image, label.tooltip);
+                : TempContent($"{label.text} {typeLabel}", label.image, label.tooltip);
 
             EditorGUI.BeginProperty(position, displayLabel, property);
 
-            using (GUIScope.Color(GetAssetTypeColor(assetType)))
-            using (GUIScope.Changed())
+            try
             {
-                var newAsset = EditorGUI.ObjectField(position, displayLabel, currentAsset, m_CachedAssetType, false);
-                if (GUI.changed)
+                using (GUIScope.Color(GetAssetTypeColor(assetType)))
+                using (GUIScope.Changed())
                 {
-                    ApplyAssetChange(newAsset);
+                    var newAsset = (SceneAsset?)EditorGUI.ObjectField(position, displayLabel, currentAsset, typeof(SceneAsset), false);
+                    if (GUI.changed)
+                    {
+                        ApplyAssetChange(newAsset);
+                    }
                 }
             }
+            finally
+            {
+                EditorGUI.EndProperty();
+            }
 
-            EditorGUI.EndProperty();
+            return;
+
+            GUIContent TempContent(string text, Texture? image, string tooltip)
+            {
+                m_TempContent ??= new GUIContent();
+                m_TempContent.text = text;
+                m_TempContent.image = image;
+                m_TempContent.tooltip = tooltip;
+                return m_TempContent;
+            }
         }
 
         private AssetReferenceType GetCurrentAssetType()
@@ -74,20 +83,17 @@ namespace Ayla
                 return AssetReferenceType.SoftReference;
             }
 #endif
+
             if (m_AssetProperty != null && m_AssetProperty.objectReferenceValue != null)
             {
                 return AssetReferenceType.Reference;
             }
+
             return AssetReferenceType.None;
         }
 
-        private Object? GetCurrentEditorAsset()
+        private SceneAsset? GetCurrentEditorAsset()
         {
-            if (m_AssetProperty?.objectReferenceValue != null)
-            {
-                return m_AssetProperty.objectReferenceValue;
-            }
-
 #if WITH_ADDRESSABLES
             if (m_AssetGUIDProperty != null)
             {
@@ -99,18 +105,25 @@ namespace Ayla
                         m_CachedGUID = guidStr;
                         var assetPath = AssetDatabase.GUIDToAssetPath(guidStr);
                         m_CachedEditorAsset = !string.IsNullOrEmpty(assetPath)
-                            ? AssetDatabase.LoadAssetAtPath(assetPath, m_CachedAssetType!)
+                            ? AssetDatabase.LoadAssetAtPath<SceneAsset>(assetPath)
                             : null;
                     }
+
                     return m_CachedEditorAsset;
                 }
             }
 #endif
 
+            var orv = m_AssetProperty?.objectReferenceValue;
+            if (orv != null)
+            {
+                return (SceneAsset)orv;
+            }
+
             return null;
         }
 
-        private void ApplyAssetChange(Object? newAsset)
+        private void ApplyAssetChange(SceneAsset? newAsset)
         {
             if (newAsset == null)
             {
@@ -118,26 +131,38 @@ namespace Ayla
                 {
                     m_AssetProperty.objectReferenceValue = null;
                 }
+                if (m_BuildIndexProperty != null)
+                {
+                    m_BuildIndexProperty.intValue = -1;
+                }
 #if WITH_ADDRESSABLES
                 if (m_AssetGUIDProperty != null)
                 {
                     m_AssetGUIDProperty.stringValue = string.Empty;
                 }
 #endif
+
                 m_CachedEditorAsset = null;
+#if WITH_ADDRESSABLES
                 m_CachedGUID = null;
+#endif
                 return;
             }
 
-#if WITH_ADDRESSABLES
             var assetPath = AssetDatabase.GetAssetPath(newAsset);
             var guid = AssetDatabase.AssetPathToGUID(assetPath);
 
-            if (IsAddressableAsset(guid))
+#if WITH_ADDRESSABLES
+
+            if (AssetReferenceHelper.IsAddressablesAsset(guid))
             {
                 if (m_AssetProperty != null)
                 {
                     m_AssetProperty.objectReferenceValue = null;
+                }
+                if (m_BuildIndexProperty != null)
+                {
+                    m_BuildIndexProperty.intValue = -1;
                 }
                 if (m_AssetGUIDProperty != null)
                 {
@@ -149,9 +174,40 @@ namespace Ayla
             }
 #endif
 
+            GUID.TryParse(guid, out var g);
+            var scenes = EditorBuildSettings.scenes;
+            int buildIndex = -1;
+            for (int i = 0; i < scenes.Length; ++i)
+            {
+                if (scenes[i].guid == g)
+                {
+                    buildIndex = i;
+                    break;
+                }
+            }
+
+            if (buildIndex == -1)
+            {
+                if (EditorUtility.DisplayDialog(SceneReferenceText.AddToBuildSceneTitle, SceneReferenceText.AddToBuildSceneMessage, SceneReferenceText.Confirm, SceneReferenceText.Cancel))
+                {
+                    var buildScene = new EditorBuildSettingsScene(g, true);
+                    scenes = EditorBuildSettings.scenes.Append(buildScene).Distinct().ToArray();
+                    EditorBuildSettings.scenes = scenes;
+                }
+                else
+                {
+                    Debug.LogErrorFormat("Scene '{0}' is not included in the build settings. Please add it to the build settings to use it as a reference.", newAsset.name);
+                    newAsset = null;
+                }
+            }
+
             if (m_AssetProperty != null)
             {
                 m_AssetProperty.objectReferenceValue = newAsset;
+            }
+            if (m_BuildIndexProperty != null)
+            {
+                m_BuildIndexProperty.intValue = buildIndex;
             }
 #if WITH_ADDRESSABLES
             if (m_AssetGUIDProperty != null)
@@ -160,22 +216,16 @@ namespace Ayla
             }
 #endif
             m_CachedEditorAsset = newAsset;
-            m_CachedGUID = null;
-        }
-
 #if WITH_ADDRESSABLES
-        private static bool IsAddressableAsset(string guid)
-        {
-            var settings = UnityEditor.AddressableAssets.AddressableAssetSettingsDefaultObject.Settings;
-            return settings != null && settings.FindAssetEntry(guid) != null;
-        }
+            m_CachedGUID = null;
 #endif
+        }
 
         private static string GetAssetTypeLabel(AssetReferenceType assetType)
         {
             return assetType switch
             {
-                AssetReferenceType.Reference => "(Linked)",
+                AssetReferenceType.Reference => "(Built)",
 #if WITH_ADDRESSABLES
                 AssetReferenceType.SoftReference => "(Soft)",
 #endif
@@ -187,9 +237,9 @@ namespace Ayla
         {
             return assetType switch
             {
-                AssetReferenceType.Reference => s_LinkedColor,
+                AssetReferenceType.Reference => Stylesheet.LinkedReferenceColor,
 #if WITH_ADDRESSABLES
-                AssetReferenceType.SoftReference => s_SoftReferenceColor,
+                AssetReferenceType.SoftReference => Stylesheet.SoftReferenceColor,
 #endif
                 _ => Color.white
             };
@@ -202,24 +252,28 @@ namespace Ayla
                 return;
             }
 
-            m_CachedProperty = property;
+            m_CachedProperty = null;
             m_CachedEditorAsset = null;
+#if WITH_ADDRESSABLES
             m_CachedGUID = null;
+#endif
 
             if (property == null)
             {
-                m_CachedAssetType = null;
                 m_AssetProperty = null;
+                m_BuildIndexProperty = null;
+#if WITH_ADDRESSABLES
                 m_AssetGUIDProperty = null;
+#endif
             }
             else
             {
-                var boxedValue = property.boxedValue;
-                var referenceType = boxedValue.GetType();
-                var implementationType = referenceType.FindImplementation(typeof(AssetReference<>));
-                m_CachedAssetType = implementationType?.GetGenericArguments()[0];
                 m_AssetProperty = property.FindPropertyRelative("m_Asset");
+                m_BuildIndexProperty = m_AssetProperty.Copy();
+                m_BuildIndexProperty.Next(false);
+#if WITH_ADDRESSABLES
                 m_AssetGUIDProperty = property.FindPropertyRelative("m_AssetGUID");
+#endif
             }
         }
     }
