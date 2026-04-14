@@ -103,6 +103,8 @@ namespace Ayla
 
         public Task<T> Task { get; }
 
+        public T Result => Task.Result;
+
         public override Task2 WaitAsync(CancellationToken cancellationToken = default)
         {
             return Task.WaitAsync(cancellationToken);

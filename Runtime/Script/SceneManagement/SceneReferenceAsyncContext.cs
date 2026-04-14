@@ -13,6 +13,8 @@ namespace Ayla
     {
         public Task<Scene> Task { get; }
 
+        public Scene Result => Task.Result;
+
         public double Progress { get; private set; }
 
         public bool IsDone => Progress >= 1.0;
