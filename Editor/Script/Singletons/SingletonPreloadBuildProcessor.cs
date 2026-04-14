@@ -17,7 +17,7 @@ namespace Ayla
                 throw new BuildPlayerWindow.BuildMethodException("SingletonDefault asset not found at path: " + SingletonDefault.kDefaultAssetPath);
             }
 
-            var preloadAssets = PlayerSettings.GetPreloadedAssets().Append(singletonDefaultAsset);
+            var preloadAssets = PlayerSettings.GetPreloadedAssets().Append(singletonDefaultAsset).Distinct();
             PlayerSettings.SetPreloadedAssets(preloadAssets.ToArray());
         }
     }

@@ -17,7 +17,7 @@ namespace Ayla
                 throw new BuildPlayerWindow.BuildMethodException("TimerMixer asset not found at path: " + TimerMixer.kDefaultAssetPath);
             }
 
-            var preloadAssets = PlayerSettings.GetPreloadedAssets().Append(timerMixerAsset);
+            var preloadAssets = PlayerSettings.GetPreloadedAssets().Append(timerMixerAsset).Distinct();
             PlayerSettings.SetPreloadedAssets(preloadAssets.ToArray());
         }
     }
