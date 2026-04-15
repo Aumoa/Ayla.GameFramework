@@ -13,7 +13,7 @@ namespace Ayla
     {
         protected bool ReleaseHandleOnCompletionQueued { get; private set; }
 
-        public virtual double Progress { get; protected set; }
+        public abstract double Progress { get; }
 
         public bool IsDone => Progress >= 1.0;
 
@@ -40,19 +40,31 @@ namespace Ayla
     public partial class AssetReferenceAsyncContext<T> : AssetReferenceAsyncContext where T : Object
     {
         private event Action? ReleaseAction;
+        private Func<double>? m_ProgressGetter;
 
-        private AssetReferenceAsyncContext? m_FromHandle;
+        private readonly AssetReferenceAsyncContext? m_FromHandle;
 
         public override double Progress
         {
-            get => m_FromHandle?.Progress ?? base.Progress;
-            protected set => base.Progress = value;
+            get
+            {
+                if (Task.IsCompleted)
+                {
+                    return 1;
+                }
+
+                if (m_FromHandle != null)
+                {
+                    return m_FromHandle.Progress;
+                }
+
+                return m_ProgressGetter?.Invoke() ?? 0;
+            }
         }
 
         internal AssetReferenceAsyncContext(T result)
         {
             Task = Task2.FromResult(result);
-            Progress = 1;
         }
 
         private AssetReferenceAsyncContext(AssetReferenceAsyncContext from, Task2 task)
@@ -72,15 +84,9 @@ namespace Ayla
                 var task = TaskUtility.Create(async () => await asyncOp).AsTask();
                 try
                 {
-                    while (!asyncOp.isDone)
-                    {
-                        Progress = (double)asyncOp.progress;
-                        await Task2.WhenAny(task, Task2.Delay(TimeSpan.FromSeconds(0.1), cancellationToken));
-                        cancellationToken.ThrowIfCancellationRequested();
-                    }
-
-                    Progress = 1;
-                    return asyncOp.Result[0];
+                    m_ProgressGetter = () => asyncOp.progress;
+                    var result = await task.WaitAsync(cancellationToken);
+                    return result[0];
                 }
                 catch
                 {

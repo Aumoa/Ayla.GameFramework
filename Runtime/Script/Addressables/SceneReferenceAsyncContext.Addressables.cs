@@ -2,13 +2,11 @@
 
 #if WITH_ADDRESSABLES
 
-using System;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine.ResourceManagement.AsyncOperations;
 using UnityEngine.ResourceManagement.ResourceProviders;
 using UnityEngine.SceneManagement;
-using Task2 = System.Threading.Tasks.Task;
 
 namespace Ayla
 {
@@ -25,15 +23,9 @@ namespace Ayla
                 var task = asyncOp.Task;
                 try
                 {
-                    while (asyncOp.IsDone == false)
-                    {
-                        Progress = (double)asyncOp.PercentComplete;
-                        await Task2.WhenAny(task, Task2.Delay(TimeSpan.FromSeconds(0.1), cancellationToken));
-                        cancellationToken.ThrowIfCancellationRequested();
-                    }
-
-                    Progress = 1;
-                    return task.Result.Scene;
+                    m_ProgressGetter = () => asyncOp.PercentComplete;
+                    var sceneInstance = await task.WaitAsync(cancellationToken);
+                    return sceneInstance.Scene;
                 }
                 catch
                 {

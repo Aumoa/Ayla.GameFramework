@@ -8,7 +8,6 @@ using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.ResourceManagement.AsyncOperations;
 using Object = UnityEngine.Object;
-using Task2 = System.Threading.Tasks.Task;
 
 namespace Ayla
 {
@@ -25,16 +24,10 @@ namespace Ayla
                 try
                 {
                     var task = asyncOp.Task;
-                    while (!asyncOp.IsDone)
-                    {
-                        Progress = (double)asyncOp.PercentComplete;
-                        await Task2.WhenAny(task, Task2.Delay(TimeSpan.FromSeconds(0.1), cancellationToken));
-                        cancellationToken.ThrowIfCancellationRequested();
-                    }
-
-                    Progress = 1;
+                    m_ProgressGetter = () => asyncOp.PercentComplete;
+                    var result = await task.WaitAsync(cancellationToken);
                     ReleaseAction += asyncOp.Release;
-                    return asyncOp.Result;
+                    return result;
                 }
                 catch
                 {
@@ -52,18 +45,11 @@ namespace Ayla
 
             async Task<T> Start()
             {
+                var task = asyncOp.Task;
                 try
                 {
-                    var task = asyncOp.Task;
-                    while (!asyncOp.IsDone)
-                    {
-                        Progress = (double)asyncOp.PercentComplete;
-                        await Task2.WhenAny(task, Task2.Delay(TimeSpan.FromSeconds(0.1), cancellationToken));
-                        cancellationToken.ThrowIfCancellationRequested();
-                    }
-
-                    Progress = 1;
-                    var result = task.Result;
+                    m_ProgressGetter = () => asyncOp.PercentComplete;
+                    var result = await task.WaitAsync(cancellationToken);
                     if (typeof(T) == typeof(GameObject))
                     {
                         ReleaseAction += asyncOp.Release;
@@ -88,7 +74,7 @@ namespace Ayla
                 {
                     if (instantiate)
                     {
-                        _ = asyncOp.Task.ContinueWith(t =>
+                        _ = task.ContinueWith(t =>
                         {
                             if (t.IsCompletedSuccessfully)
                             {

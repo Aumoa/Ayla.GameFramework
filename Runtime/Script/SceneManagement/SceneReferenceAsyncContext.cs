@@ -5,7 +5,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using Task2 = System.Threading.Tasks.Task;
 
 namespace Ayla
 {
@@ -15,9 +14,22 @@ namespace Ayla
 
         public Scene Result => Task.Result;
 
-        public double Progress { get; private set; }
+        public double Progress
+        {
+            get
+            {
+                if (Task.IsCompleted)
+                {
+                    return 1.0;
+                }
 
-        public bool IsDone => Progress >= 1.0;
+                return m_ProgressGetter?.Invoke() ?? 0;
+            }
+        }
+
+        public bool IsDone => Task.IsCompleted;
+
+        private Func<double>? m_ProgressGetter;
 
         internal SceneReferenceAsyncContext(AsyncOperation asyncOp, int buildIndex, CancellationToken cancellationToken)
         {
@@ -30,14 +42,8 @@ namespace Ayla
                 var task = TaskUtility.Create(async () => await asyncOp).AsTask();
                 try
                 {
-                    while (asyncOp.isDone == false)
-                    {
-                        Progress = (double)asyncOp.progress;
-                        await Task2.WhenAny(task, Task2.Delay(TimeSpan.FromSeconds(0.1), cancellationToken));
-                        cancellationToken.ThrowIfCancellationRequested();
-                    }
-
-                    Progress = 1;
+                    m_ProgressGetter = () => asyncOp.progress;
+                    await task.WaitAsync(cancellationToken);
                     return GetLoadedScene();
                 }
                 catch
