@@ -13,10 +13,25 @@ namespace Ayla
     {
         [SerializeField]
         private string? m_AssetGUID;
+        private readonly string m_Address;
+
+        private AssetReference(string address)
+        {
+            m_Address = address;
+        }
 
         private bool TryLoadAssetByAddressables(CancellationToken cancellationToken, [NotNullWhen(true)] out AssetReferenceAsyncContext<T>? context)
         {
-            if (string.IsNullOrWhiteSpace(m_AssetGUID))
+            string runtimeKey;
+            if (!string.IsNullOrWhiteSpace(m_Address))
+            {
+                runtimeKey = m_Address;
+            }
+            else if (!string.IsNullOrWhiteSpace(m_AssetGUID))
+            {
+                runtimeKey = m_AssetGUID;
+            }
+            else
             {
                 context = null;
                 return false;
@@ -24,12 +39,12 @@ namespace Ayla
 
             if (typeof(T).IsAssignableTo(typeof(Component)))
             {
-                var asyncOp = Addressables.LoadAssetAsync<GameObject>(m_AssetGUID);
+                var asyncOp = Addressables.LoadAssetAsync<GameObject>(runtimeKey);
                 context = new AssetReferenceAsyncContext<T>(asyncOp, false, cancellationToken);
             }
             else
             {
-                var asyncOp = Addressables.LoadAssetAsync<T>(m_AssetGUID);
+                var asyncOp = Addressables.LoadAssetAsync<T>(runtimeKey);
                 context = new AssetReferenceAsyncContext<T>(asyncOp, cancellationToken);
             }
 
@@ -47,6 +62,11 @@ namespace Ayla
             var asyncOp = Addressables.InstantiateAsync(m_AssetGUID, parent);
             context = new AssetReferenceAsyncContext<T>(asyncOp, true, cancellationToken);
             return true;
+        }
+
+        public static AssetReference<T> FromAddress(string address)
+        {
+            return new AssetReference<T>(address);
         }
     }
 }
