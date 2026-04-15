@@ -11,7 +11,7 @@ namespace Ayla
 {
     public abstract class AssetReferenceAsyncContext
     {
-        protected bool m_ReleaseHandleOnCompletionQueued { get; private set; }
+        protected bool ReleaseHandleOnCompletionQueued { get; private set; }
 
         public virtual double Progress { get; protected set; }
 
@@ -29,10 +29,10 @@ namespace Ayla
                 return;
             }
 
-            if (!m_ReleaseHandleOnCompletionQueued)
+            if (!ReleaseHandleOnCompletionQueued)
             {
                 WaitAsync().ContinueWith(_ => Release());
-                m_ReleaseHandleOnCompletionQueued = true;
+                ReleaseHandleOnCompletionQueued = true;
             }
         }
     }
