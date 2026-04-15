@@ -45,6 +45,24 @@ namespace Ayla
             }
         }
 
+#if UNITY_EDITOR
+        public SceneAsset? EditorAsset
+        {
+            get
+            {
+#if WITH_ADDRESSABLES
+                if (!string.IsNullOrWhiteSpace(m_AssetGUID))
+                {
+                    var assetPath = AssetDatabase.GUIDToAssetPath(m_AssetGUID);
+                    return AssetDatabase.LoadAssetAtPath<SceneAsset>(assetPath);
+                }
+#endif
+
+                return m_Asset;
+            }
+        }
+#endif
+
         void ISerializationCallbackReceiver.OnBeforeSerialize()
         {
 #if UNITY_EDITOR

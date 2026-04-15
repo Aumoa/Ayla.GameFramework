@@ -2,6 +2,7 @@
 
 using System;
 using System.Threading;
+using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
@@ -57,6 +58,24 @@ namespace Ayla
                 return m_Asset ? AssetReferenceType.Reference : AssetReferenceType.None;
             }
         }
+
+#if UNITY_EDITOR
+        public T? EditorAsset
+        {
+            get
+            {
+#if WITH_ADDRESSABLES
+                if (!string.IsNullOrWhiteSpace(m_AssetGUID))
+                {
+                    var assetPath = AssetDatabase.GUIDToAssetPath(m_AssetGUID);
+                    return AssetDatabase.LoadAssetAtPath<T>(assetPath);
+                }
+#endif
+
+                return m_Asset;
+            }
+        }
+#endif
 
         public override AssetReferenceAsyncContext LoadGenericAssetAsync(CancellationToken cancellationToken = default)
             => LoadAssetAsync(cancellationToken);
