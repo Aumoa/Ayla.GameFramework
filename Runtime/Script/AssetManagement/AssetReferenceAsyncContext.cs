@@ -69,7 +69,7 @@ namespace Ayla
 
             async Task<T> Start()
             {
-                var task = TaskUtility.Create(async () => await asyncOp);
+                var task = TaskUtility.Create(async () => await asyncOp).AsTask();
                 try
                 {
                     while (!asyncOp.isDone)
