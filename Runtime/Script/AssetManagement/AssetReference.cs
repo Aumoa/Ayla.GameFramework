@@ -16,6 +16,10 @@ namespace Ayla
 
         public abstract AssetReferenceType ReferenceType { get; }
 
+#if UNITY_EDITOR
+        public abstract Object? EditorGenericAsset { get; }
+#endif
+
         public abstract AssetReferenceAsyncContext LoadGenericAssetAsync(CancellationToken cancellationToken = default);
 
         public abstract AssetReferenceAsyncContext InstantiateGenericAsync(Transform? parent, CancellationToken cancellationToken = default);
@@ -25,7 +29,7 @@ namespace Ayla
     }
 
     [Serializable]
-    public partial class AssetReference<T> : AssetReference where T : Object
+    public partial class AssetReference<T> : AssetReference, IEquatable<AssetReference<T>> where T : Object
     {
         [SerializeField]
         private T? m_Asset;
@@ -59,7 +63,62 @@ namespace Ayla
             }
         }
 
+        public AssetReference()
+        {
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (obj is AssetReference<T> ar)
+            {
+                return Equals(ar);
+            }
+
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            return
+#if WITH_ADDRESSABLES
+                    (m_AssetGUID?.GetHashCode() ?? 0)
+#else
+                    0
+#endif
+                    ^ (m_Asset ? m_Asset.GetHashCode() : 0);
+        }
+
+        public bool Equals(AssetReference<T>? ar)
+        {
+            if (ar is null)
+            {
+                return false;
+            }
+
+            var rt = ReferenceType;
+            if (ReferenceType != ar.ReferenceType)
+            {
+                return false;
+            }
+
+            switch (rt)
+            {
+                case AssetReferenceType.None:
+                    return true;
+                case AssetReferenceType.Reference:
+                    return m_Asset == ar.m_Asset;
+#if WITH_ADDRESSABLES
+                case AssetReferenceType.SoftReference:
+                    return m_AssetGUID == ar.m_AssetGUID;
+#endif
+                default:
+                    throw new InvalidOperationException("Invalid enum value");
+            }
+        }
+
 #if UNITY_EDITOR
+        public override Object? EditorGenericAsset => EditorAsset;
+
         public T? EditorAsset
         {
             get
@@ -128,5 +187,15 @@ namespace Ayla
 
         public AssetReferenceAsyncContext<T> InstantiateAsync(CancellationToken cancellationToken = default)
             => InstantiateAsync(null, cancellationToken);
+
+        public static bool operator ==(AssetReference<T>? lhs, AssetReference<T>? rhs)
+        {
+            return ReferenceEquals(lhs, rhs) || (lhs?.Equals(rhs) == true);
+        }
+
+        public static bool operator !=(AssetReference<T>? lhs, AssetReference<T>? rhs)
+        {
+            return !(lhs == rhs);
+        }
     }
 }

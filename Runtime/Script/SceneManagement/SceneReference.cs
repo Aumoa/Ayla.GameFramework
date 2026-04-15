@@ -9,7 +9,10 @@ using UnityEngine.SceneManagement;
 namespace Ayla
 {
     [Serializable]
-    public partial class SceneReference : ISerializationCallbackReceiver
+    public partial class SceneReference : ISerializationCallbackReceiver, IEquatable<SceneReference>
+#if UNITY_EDITOR
+        , IEquatable<SceneAsset>
+#endif
     {
 #if UNITY_EDITOR
         [SerializeField]
@@ -17,6 +20,10 @@ namespace Ayla
 #endif
         [SerializeField]
         private int m_BuildIndex = -1;
+
+        public SceneReference()
+        {
+        }
 
         public bool IsValid
         {
@@ -60,6 +67,73 @@ namespace Ayla
 
                 return m_Asset;
             }
+        }
+#endif
+
+        public override bool Equals(object obj)
+        {
+            if (obj is SceneReference sr)
+            {
+                return Equals(sr);
+            }
+
+#if UNITY_EDITOR
+            if (obj is SceneAsset sa)
+            {
+                return Equals(sa);
+            }
+#endif
+
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            return
+#if WITH_ADDRESSABLES
+                (m_AssetGUID?.GetHashCode() ?? 0)
+#else
+                0
+#endif
+                ^ m_BuildIndex.GetHashCode();
+        }
+
+        public bool Equals(SceneReference? sr)
+        {
+            if (sr == null)
+            {
+                return false;
+            }
+
+            var rt = ReferenceType;
+            if (rt != sr.ReferenceType)
+            {
+                return false;
+            }
+
+            switch (rt)
+            {
+                case AssetReferenceType.None:
+                    return true;
+                case AssetReferenceType.Reference:
+#if UNITY_EDITOR
+                    return m_Asset == sr.m_Asset;
+#else
+                    return m_BuildIndex == sr.m_BuildIndex;
+#endif
+#if WITH_ADDRESSABLES
+                case AssetReferenceType.SoftReference:
+                    return m_AssetGUID == sr.m_AssetGUID;
+#endif
+                default:
+                    throw new InvalidOperationException("Invalid enum value");
+            }
+        }
+
+#if UNITY_EDITOR
+        public bool Equals(SceneAsset? sa)
+        {
+            return EditorAsset == sa;
         }
 #endif
 
@@ -144,5 +218,15 @@ namespace Ayla
 
         public SceneReferenceAsyncContext LoadSceneAsync(LoadSceneMode loadSceneMode = LoadSceneMode.Single, bool activateOnLoad = true, int priority = 100, CancellationToken cancellationToken = default)
             => LoadSceneAsync(new LoadSceneParameters(loadSceneMode), activateOnLoad, priority, cancellationToken);
+
+        public static bool operator ==(SceneReference? lhs, SceneReference? rhs)
+        {
+            return ReferenceEquals(lhs, rhs) || (lhs?.Equals(rhs) == true);
+        }
+
+        public static bool operator !=(SceneReference? lhs, SceneReference? rhs)
+        {
+            return !(lhs == rhs);
+        }
     }
 }
