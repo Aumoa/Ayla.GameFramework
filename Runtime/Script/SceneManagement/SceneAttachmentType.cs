@@ -1,6 +1,6 @@
 ﻿namespace Ayla
 {
-    public enum SceneAttributeType
+    public enum SceneAttachmentType
     {
         Background
     }

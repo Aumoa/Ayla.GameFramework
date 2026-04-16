@@ -6,9 +6,9 @@ using UnityEngine.SceneManagement;
 
 namespace Ayla
 {
-    public class SceneAttribute : MonoBehaviour, IAssetReferenceStorage
+    public class SceneAttachment : MonoBehaviour, IAssetReferenceStorage
     {
-        public SceneAttributeType Type;
+        public SceneAttachmentType Type;
         public SceneReference? Scene;
 
         private readonly List<AssetReferenceAsyncContext> m_AssetOperationHandle = new();

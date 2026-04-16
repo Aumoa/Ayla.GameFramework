@@ -40,9 +40,9 @@ namespace Ayla
             private const double kProgressWeightForInstantiate = 0.1;
 
             private double m_Progress;
-            private readonly TaskCompletionSource<SceneAttribute> m_TaskCompletionSource = new();
+            private readonly TaskCompletionSource<SceneAttachment> m_TaskCompletionSource = new();
 
-            public AdditiveSceneTask(AssetReference<SceneAttribute> sceneAttr, CancellationToken cancellationToken)
+            public AdditiveSceneTask(AssetReference<SceneAttachment> sceneAttr, CancellationToken cancellationToken)
             {
                 Start(sceneAttr, cancellationToken);
             }
@@ -51,11 +51,11 @@ namespace Ayla
 
             public override Task Task => m_TaskCompletionSource.Task;
 
-            public Task<SceneAttribute> GetTask() => m_TaskCompletionSource.Task;
+            public Task<SceneAttachment> GetTask() => m_TaskCompletionSource.Task;
 
-            private async void Start(AssetReference<SceneAttribute> sceneAttr, CancellationToken cancellationToken)
+            private async void Start(AssetReference<SceneAttachment> sceneAttr, CancellationToken cancellationToken)
             {
-                SceneAttribute? component = null;
+                SceneAttachment? component = null;
 
                 try
                 {
@@ -138,7 +138,7 @@ namespace Ayla
             m_Tasks.Add(task);
         }
 
-        public AdditiveSceneTask AddAdditive(AssetReference<SceneAttribute> sceneAttr)
+        public AdditiveSceneTask AddAdditive(AssetReference<SceneAttachment> sceneAttr)
         {
             var task = new AdditiveSceneTask(sceneAttr, m_CancellationToken);
             m_Tasks.Add(task);
