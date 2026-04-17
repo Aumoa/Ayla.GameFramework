@@ -13,7 +13,7 @@ namespace Ayla
     {
         [SerializeField]
         private string? m_AssetGUID;
-        private readonly string m_Address;
+        private string? m_Address;
 
         private AssetReference(string address)
         {
