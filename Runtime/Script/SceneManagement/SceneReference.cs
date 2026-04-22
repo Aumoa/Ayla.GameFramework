@@ -228,5 +228,16 @@ namespace Ayla
         {
             return !(lhs == rhs);
         }
+
+#if UNITY_EDITOR
+        public static SceneReference FromBuiltInAsset(SceneAsset sceneAsset, int buildIndex)
+        {
+            return new SceneReference
+            {
+                m_Asset = sceneAsset,
+                m_BuildIndex = buildIndex
+            };
+        }
+#endif
     }
 }

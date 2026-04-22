@@ -6,7 +6,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
-using UnityEngine.ResourceManagement.AsyncOperations;
 using UnityEngine.ResourceManagement.ResourceProviders;
 using UnityEngine.SceneManagement;
 
@@ -49,6 +48,16 @@ namespace Ayla
         {
             return new SceneReference(address);
         }
+
+#if UNITY_EDITOR
+        public static SceneReference FromAddressablesAsset(string guid)
+        {
+            return new SceneReference
+            {
+                m_AssetGUID = guid
+            };
+        }
+#endif
     }
 }
 #endif

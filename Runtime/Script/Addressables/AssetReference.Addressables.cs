@@ -68,6 +68,16 @@ namespace Ayla
         {
             return new AssetReference<T>(address);
         }
+
+#if UNITY_EDITOR
+        public static AssetReference<T> FromAddressablesAsset(string guid)
+        {
+            return new AssetReference<T>
+            {
+                m_AssetGUID = guid
+            };
+        }
+#endif
     }
 }
 

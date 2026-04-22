@@ -197,5 +197,15 @@ namespace Ayla
         {
             return !(lhs == rhs);
         }
+
+#if UNITY_EDITOR
+        public static AssetReference<T> FromAsset(T asset)
+        {
+            return new AssetReference<T>
+            {
+                m_Asset = asset
+            };
+        }
+#endif
     }
 }
