@@ -140,7 +140,7 @@ namespace Ayla
         void ISerializationCallbackReceiver.OnBeforeSerialize()
         {
 #if UNITY_EDITOR
-            if (!BuildPipeline.isBuildingPlayer)
+            if (!BuildPipeline.isBuildingPlayer || Application.isPlaying)
             {
                 return;
             }
