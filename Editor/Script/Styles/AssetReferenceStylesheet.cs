@@ -1,8 +1,10 @@
-﻿using UnityEngine;
+﻿#nullable enable
+
+using UnityEngine;
 
 namespace Ayla
 {
-    internal static class Stylesheet
+    internal static class AssetReferenceStylesheet
     {
         public static readonly Color LinkedReferenceColor = new(0.7f, 0.85f, 1.0f);
 #if WITH_ADDRESSABLES

@@ -237,9 +237,9 @@ namespace Ayla
         {
             return assetType switch
             {
-                AssetReferenceType.Reference => Stylesheet.LinkedReferenceColor,
+                AssetReferenceType.Reference => AssetReferenceStylesheet.LinkedReferenceColor,
 #if WITH_ADDRESSABLES
-                AssetReferenceType.SoftReference => Stylesheet.SoftReferenceColor,
+                AssetReferenceType.SoftReference => AssetReferenceStylesheet.SoftReferenceColor,
 #endif
                 _ => Color.white
             };

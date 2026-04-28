@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 namespace Ayla
 {
@@ -44,6 +44,34 @@ namespace Ayla
             SystemLanguage.Korean => "자식 채널 추가",
             SystemLanguage.Japanese => "子チャンネルを追加",
             _ => "Add Child Channel"
+        };
+
+        public static string RenameChannel => ApplicationMisc.EditorLanguage switch
+        {
+            SystemLanguage.Korean => "채널 이름 변경",
+            SystemLanguage.Japanese => "チャンネル名を変更",
+            _ => "Rename Channel"
+        };
+
+        public static string DeleteChannel => ApplicationMisc.EditorLanguage switch
+        {
+            SystemLanguage.Korean => "채널 삭제",
+            SystemLanguage.Japanese => "チャンネルを削除",
+            _ => "Delete Channel"
+        };
+
+        public static string TimeScaleLabel => ApplicationMisc.EditorLanguage switch
+        {
+            SystemLanguage.Korean => "타임 스케일",
+            SystemLanguage.Japanese => "タイムスケール",
+            _ => "Time Scale"
+        };
+
+        public static string FinalHeader => ApplicationMisc.EditorLanguage switch
+        {
+            SystemLanguage.Korean => "최종",
+            SystemLanguage.Japanese => "最終",
+            _ => "Final"
         };
     }
 }

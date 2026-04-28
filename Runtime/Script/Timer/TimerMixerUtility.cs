@@ -1,4 +1,7 @@
-﻿using System;
+#nullable enable
+
+#if UNITY_EDITOR
+using System;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
@@ -12,9 +15,9 @@ namespace Ayla
         {
             var asset = (Object)channel;
             var assetPath = AssetDatabase.GetAssetPath(asset);
-            if (AssetDatabase.AssetPathExists(assetPath) == false)
+            if (!AssetDatabase.AssetPathExists(assetPath))
             {
-                throw new ArgumentException();
+                throw new ArgumentException("Channel asset path does not exist.", nameof(channel));
             }
 
             Undo.RecordObject(asset, "Add Child");
@@ -27,14 +30,11 @@ namespace Ayla
 
                 if (channel is TimerMixer mixer)
                 {
-                    var newArray = mixer.m_Channels.Append(newChannelAsset);
-                    mixer.m_Channels = newArray.ToArray();
+                    mixer.m_Channels = mixer.m_Channels.Append(newChannelAsset).ToArray();
                 }
                 else
                 {
-                    var channelAsset = (TimerChannel)channel;
-                    var newArray = channelAsset.m_Channels.Append(newChannelAsset);
-                    channelAsset.m_Channels = newArray.ToArray();
+                    ((TimerChannel)channel).m_Channels = ((TimerChannel)channel).m_Channels.Append(newChannelAsset).ToArray();
                 }
 
                 return newChannelAsset;
@@ -49,5 +49,41 @@ namespace Ayla
                 EditorUtility.SetDirty(asset);
             }
         }
+
+        public static void RemoveChannel(ITimerChannel parent, ITimerChannel channel)
+        {
+            if (channel is TimerMixer)
+            {
+                throw new ArgumentException("The root TimerMixer channel cannot be removed.", nameof(channel));
+            }
+
+            var channelAsset = (TimerChannel)channel;
+            var parentAsset = (Object)parent;
+
+            Undo.RecordObject(parentAsset, "Remove Channel");
+
+            if (parent is TimerMixer mixer)
+            {
+                mixer.m_Channels = mixer.m_Channels.Where(c => c != channelAsset).ToArray();
+            }
+            else
+            {
+                ((TimerChannel)parent).m_Channels = ((TimerChannel)parent).m_Channels.Where(c => c != channelAsset).ToArray();
+            }
+
+            EditorUtility.SetDirty(parentAsset);
+            DestroySubAssetsRecursive(channelAsset);
+            AssetDatabase.SaveAssets();
+        }
+
+        private static void DestroySubAssetsRecursive(TimerChannel channel)
+        {
+            foreach (var child in channel.m_Channels)
+            {
+                DestroySubAssetsRecursive(child);
+            }
+            Undo.DestroyObjectImmediate(channel);
+        }
     }
 }
+#endif
