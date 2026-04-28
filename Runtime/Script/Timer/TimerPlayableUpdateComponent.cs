@@ -1,4 +1,6 @@
-﻿using System;
+#nullable enable
+
+using System;
 using UnityEngine;
 
 namespace Ayla
@@ -8,11 +10,12 @@ namespace Ayla
         [RequiredInterface(typeof(ITimerPlayableComponent))]
         public Component[] Targets = Array.Empty<Component>();
 
-        protected void Update()
+        protected override void OnTimeScaleChanged()
         {
+            var timeScale = TimeScale;
             foreach (var target in Targets)
             {
-                ((ITimerPlayableComponent)target).TimeScale = TimeScale;
+                ((ITimerPlayableComponent)target).OnTimeScaleUpdated(timeScale);
             }
         }
     }

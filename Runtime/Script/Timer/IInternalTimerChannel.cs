@@ -1,7 +1,9 @@
-﻿namespace Ayla
+﻿using System.Collections.Generic;
+
+namespace Ayla
 {
     internal interface IInternalTimerChannel
     {
-        void TimeUpdate(double deltaTime);
+        void TimeUpdate(double parentTimeScale, double deltaTime, List<IInternalTimerChannel> timeScaleChanged);
     }
 }

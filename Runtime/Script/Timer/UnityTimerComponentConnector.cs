@@ -65,30 +65,31 @@ namespace Ayla
 
         public double TimeScale
         {
-            set
-            {
-                foreach (var target in m_Targets)
-                {
-                    switch (target)
-                    {
-                        case PlayableDirector pd:
-#if UNITY_EDITOR
-                            if (!m_ExitingPlayMode)
-#endif
-                            {
-                                pd.playableGraph.GetRootPlayable(0).SetSpeed(value);
-                            }
-                            break;
-                        case Animator a:
-                            a.speed = (float)value;
-                            break;
-                        case ParticleSystem ps:
-                            var main = ps.main;
-                            main.simulationSpeed = (float)value;
-                            break;
-                    }
-                }
+            set => OnTimeScaleUpdated(value);
+        }
 
+        public void OnTimeScaleUpdated(double timeScale)
+        {
+            foreach (var target in m_Targets)
+            {
+                switch (target)
+                {
+                    case PlayableDirector pd:
+#if UNITY_EDITOR
+                        if (!m_ExitingPlayMode)
+#endif
+                        {
+                            pd.playableGraph.GetRootPlayable(0).SetSpeed(timeScale);
+                        }
+                        break;
+                    case Animator a:
+                        a.speed = (float)timeScale;
+                        break;
+                    case ParticleSystem ps:
+                        var main = ps.main;
+                        main.simulationSpeed = (float)timeScale;
+                        break;
+                }
             }
         }
     }

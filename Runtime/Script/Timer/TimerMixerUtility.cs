@@ -26,7 +26,7 @@ namespace Ayla
             try
             {
                 newChannelAsset.name = nameToAdd;
-                newChannelAsset.m_Parent = asset as ScriptableObject;
+                newChannelAsset.m_Parent = (ScriptableObject)asset;
                 AssetDatabase.AddObjectToAsset(newChannelAsset, asset);
 
                 if (channel is TimerMixer mixer)

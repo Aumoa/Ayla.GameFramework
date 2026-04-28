@@ -6,6 +6,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.LowLevel;
 using UnityEngine.PlayerLoop;
+using UnityEngine.Pool;
 
 namespace Ayla
 {
@@ -20,11 +21,6 @@ namespace Ayla
 
 #if !UNITY_EDITOR
         private static TimerMixer? s_PreloadedAsset;
-
-        private void OnEnable()
-        {
-            s_PreloadedAsset = this;
-        }
 
         private static TimerMixer PreloadedAsset => s_PreloadedAsset != null ? s_PreloadedAsset : throw new InvalidOperationException("TimerMixer asset is not preloaded.");
 #endif
@@ -43,6 +39,9 @@ namespace Ayla
 
         private double m_Time;
         private double m_DeltaTime;
+        private double m_RuntimeTimeScale = 1;
+
+        public event Action? TimeScaleChanged;
 
         public ITimerChannel? Parent => null;
 
@@ -54,7 +53,7 @@ namespace Ayla
             set => name = value;
         }
 
-        public double SelfTimeScale => Application.isPlaying ? UnityEngine.Time.timeScale : 1.0;
+        public double SelfTimeScale => Application.isPlaying ? m_RuntimeTimeScale : 1.0;
 
         public double TimeScale => SelfTimeScale;
 
@@ -64,22 +63,47 @@ namespace Ayla
 
         private void OnEnable()
         {
-            if (Application.isPlaying)
+#if UNITY_EDITOR
+            if (EditorApplication.isPlayingOrWillChangePlaymode)
+#endif
             {
+#if !UNITY_EDITOR
+                s_PreloadedAsset = this;
+#endif
+
                 Asserts.Equals(s_Mixer, null);
                 s_Mixer = this;
                 Register();
             }
         }
 
-        void IInternalTimerChannel.TimeUpdate(double deltaTime)
+        void IInternalTimerChannel.TimeUpdate(double parentTimeScale, double deltaTime, List<IInternalTimerChannel> timeScaleChanged)
         {
             m_DeltaTime = deltaTime;
             m_Time += m_DeltaTime;
+            m_RuntimeTimeScale = UnityEngine.Time.timeScale;
+
+            if (m_RuntimeTimeScale != parentTimeScale)
+            {
+                timeScaleChanged.Add(this);
+            }
 
             foreach (var channel in m_Channels)
             {
-                ((IInternalTimerChannel)channel).TimeUpdate(m_DeltaTime);
+                ((IInternalTimerChannel)channel).TimeUpdate(m_RuntimeTimeScale, m_DeltaTime, timeScaleChanged);
+            }
+
+            foreach (var target in timeScaleChanged)
+            {
+                switch (target)
+                {
+                    case TimerMixer tm:
+                        tm.TimeScaleChanged?.Invoke();
+                        break;
+                    case TimerChannel tc:
+                        tc.InvokeTimeScaleChanged();
+                        break;
+                }
             }
         }
 
@@ -87,7 +111,8 @@ namespace Ayla
         {
             public static void Call()
             {
-                ((IInternalTimerChannel)s_Mixer!).TimeUpdate((double)UnityEngine.Time.deltaTime);
+                using var scope1 = ListPool<IInternalTimerChannel>.Get(out var timeScaleChanged);
+                ((IInternalTimerChannel)s_Mixer!).TimeUpdate(1.0, (double)UnityEngine.Time.deltaTime, timeScaleChanged);
             }
         }
 
