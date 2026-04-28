@@ -128,7 +128,7 @@ namespace Ayla
             {
                 using (new EditorGUI.DisabledScope(true))
                 {
-                    EditorGUI.Slider(sliderRect, (float)channel.TimeScale, 0f, 3f);
+                    EditorGUI.Slider(sliderRect, (float)channel.SelfTimeScale, 0f, 3f);
                 }
             }
             else
@@ -170,7 +170,7 @@ namespace Ayla
             {
                 foreach (var child in channel.Children)
                 {
-                    float childH = DrawChannelSliderRow(evt, child, indent + 1, drawRect, finalTS * child.TimeScale);
+                    float childH = DrawChannelSliderRow(evt, child, indent + 1, drawRect, finalTS * child.SelfTimeScale);
                     drawRect = drawRect.MarginTop(childH);
                     totalHeight += childH;
                 }

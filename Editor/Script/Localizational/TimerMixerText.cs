@@ -73,5 +73,33 @@ namespace Ayla
             SystemLanguage.Japanese => "最終",
             _ => "Final"
         };
+
+        public static string ChannelHeader => ApplicationMisc.EditorLanguage switch
+        {
+            SystemLanguage.Korean => "채널",
+            SystemLanguage.Japanese => "チャンネル",
+            _ => "Channel"
+        };
+
+        public static string MasterLabel => ApplicationMisc.EditorLanguage switch
+        {
+            SystemLanguage.Korean => "마스터",
+            SystemLanguage.Japanese => "マスター",
+            _ => "Master"
+        };
+
+        public static string SelfTimeScaleLabel => ApplicationMisc.EditorLanguage switch
+        {
+            SystemLanguage.Korean => "자체 타임 스케일",
+            SystemLanguage.Japanese => "自タイムスケール",
+            _ => "Self Time Scale"
+        };
+
+        public static string FinalTimeScaleLabel => ApplicationMisc.EditorLanguage switch
+        {
+            SystemLanguage.Korean => "최종 타임 스케일",
+            SystemLanguage.Japanese => "最終タイムスケール",
+            _ => "Final Time Scale"
+        };
     }
 }

@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.LowLevel;
 using UnityEngine.PlayerLoop;
@@ -17,6 +18,29 @@ namespace Ayla
         [SerializeField]
         internal TimerChannel[] m_Channels = Array.Empty<TimerChannel>();
 
+#if !UNITY_EDITOR
+        private static TimerMixer? s_PreloadedAsset;
+
+        private void OnEnable()
+        {
+            s_PreloadedAsset = this;
+        }
+
+        private static TimerMixer PreloadedAsset => s_PreloadedAsset != null ? s_PreloadedAsset : throw new InvalidOperationException("TimerMixer asset is not preloaded.");
+#endif
+
+        public static TimerMixer Instance
+        {
+            get
+            {
+#if UNITY_EDITOR
+                return AssetDatabase.LoadAssetAtPath<TimerMixer>(kDefaultAssetPath);
+#else
+                return PreloadedAsset;
+#endif
+            }
+        }
+
         private double m_Time;
         private double m_DeltaTime;
 
@@ -30,9 +54,9 @@ namespace Ayla
             set => name = value;
         }
 
-        public double TimeScale => Application.isPlaying ? UnityEngine.Time.timeScale : 1;
+        public double SelfTimeScale => Application.isPlaying ? UnityEngine.Time.timeScale : 1.0;
 
-        public double SelfTimeScale => TimeScale;
+        public double TimeScale => SelfTimeScale;
 
         public double DeltaTime => m_DeltaTime;
 
