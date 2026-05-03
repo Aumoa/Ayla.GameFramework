@@ -41,30 +41,23 @@ namespace Ayla
                     nicifyName = ObjectNames.NicifyVariableName(element.boxedValue.GetType().Name);
                 }
 
-                bool isExpanded = EditorGUILayout.BeginFoldoutHeaderGroup(element.isExpanded, nicifyName);
-                try
+                bool isExpanded = EditorGUILayout.Foldout(element.isExpanded, nicifyName, EditorStyles.foldoutHeader);
+                element.isExpanded = isExpanded;
+                if (isExpanded)
                 {
-                    element.isExpanded = isExpanded;
-                    if (isExpanded)
+                    ref var ce = ref m_CachedEditors[i];
+
+                    if (ce == null)
                     {
-                        ref var ce = ref m_CachedEditors[i];
-
-                        if (ce == null)
-                        {
-                            CreateCachedEditor(element.objectReferenceValue, null, ref ce);
-                        }
-
-                        if (ce == null)
-                        {
-                            throw new InvalidOperationException($"Failed to create editor for {nicifyName}.");
-                        }
-
-                        ce.OnInspectorGUI();
+                        CreateCachedEditor(element.objectReferenceValue, null, ref ce);
                     }
-                }
-                finally
-                {
-                    EditorGUILayout.EndFoldoutHeaderGroup();
+
+                    if (ce == null)
+                    {
+                        throw new InvalidOperationException($"Failed to create editor for {nicifyName}.");
+                    }
+
+                    ce.OnInspectorGUI();
                 }
             }
 

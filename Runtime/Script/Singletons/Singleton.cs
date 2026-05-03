@@ -37,7 +37,10 @@ namespace Ayla
             }
         }
 
-        public readonly SingletonManager Manager = ConstructorContext.Args.Value.Owner;
+        [SerializeField]
+        private SingletonManager m_Manager = ConstructorContext.Args.Value.Owner;
+
+        public SingletonManager Manager => m_Manager;
 
         public virtual ValueTask InitializeAsync(CancellationToken cancellationToken = default)
         {
