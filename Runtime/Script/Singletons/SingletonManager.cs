@@ -93,8 +93,7 @@ namespace Ayla
                     {
                         try
                         {
-                            var singleton = (Singleton)gameObject.AddComponent(type);
-                            singleton.m_IsManaged = true;
+                            var singleton = (Singleton)ScriptableObject.CreateInstance(type);
                             singletons.Add(singleton);
                         }
                         catch (Exception e)

@@ -16,18 +16,16 @@ namespace Ayla
         [SerializeField, HideInInspector]
         private List<SceneRoot> m_SceneRoots = new();
 
-        private SemaphoreSlim m_Semaphore = null!;
+        private SemaphoreSlim m_Semaphore = new(1);
 
-        protected override void OnEnable()
+        protected override void Dispose(bool disposing)
         {
-            base.OnEnable();
-            m_Semaphore ??= new SemaphoreSlim(1);
-        }
+            if (disposing)
+            {
+                m_Semaphore.Dispose();
+            }
 
-        protected override void OnDestroy()
-        {
-            m_Semaphore?.Dispose();
-            base.OnDestroy();
+            base.Dispose(disposing);
         }
 
         public override ValueTask StartAsync(CancellationToken cancellationToken = default)

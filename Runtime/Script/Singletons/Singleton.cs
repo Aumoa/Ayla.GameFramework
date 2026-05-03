@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace Ayla
 {
-    public abstract class Singleton : MonoBehaviour
+    public abstract class Singleton : ScriptableObject
     {
         internal readonly struct ConstructorArguments
         {
@@ -38,8 +38,6 @@ namespace Ayla
         }
 
         public readonly SingletonManager Manager = ConstructorContext.Args.Value.Owner;
-
-        internal bool m_IsManaged;
 
         public virtual ValueTask InitializeAsync(CancellationToken cancellationToken = default)
         {
@@ -107,19 +105,6 @@ namespace Ayla
             return s_Instance != null;
         }
 
-        [Flags]
-        private enum CallState
-        {
-            Awake = 0x1,
-            OnEnable = 0x2,
-            Start = 0x4,
-            OnDisable = 0x8,
-            OnDestroy = 0x10,
-        }
-
-        [SerializeField]
-        private CallState m_Called;
-
         ~Singleton()
         {
             Dispose(false);
@@ -133,45 +118,16 @@ namespace Ayla
 
         protected virtual void Dispose(bool disposing)
         {
-#if UNITY_EDITOR
-            if (ApplicationMisc.IsDomainReloading() == false)
-#endif
-            {
-                Asserts.True(!m_IsManaged || m_Called == (CallState.Awake | CallState.OnEnable | CallState.Start | CallState.OnDisable | CallState.OnDestroy), $"Basecall missing for singleton of type {GetType()}. CallState: {m_Called}");
-            }
-        }
-
-        protected virtual void Awake()
-        {
-            Asserts.True(s_Instance == null, $"Singleton instance of type {typeof(TSingleton)} is already initialized.");
-            s_Instance = (TSingleton)(object)this;
-            m_Called |= CallState.Awake;
         }
 
         protected virtual void OnEnable()
         {
             Asserts.True(s_Instance == null || s_Instance == this, $"Singleton instance of type {typeof(TSingleton)} is already initialized.");
             s_Instance = (TSingleton)(object)this;
-            m_Called |= CallState.OnEnable;
-        }
-
-        protected virtual void Start()
-        {
-            Asserts.True(s_Instance == this, $"Singleton instance of type {typeof(TSingleton)} is not initialized.");
-            m_Called |= CallState.Start;
         }
 
         protected virtual void OnDisable()
         {
-            m_Called |= CallState.OnDisable;
-        }
-
-        protected virtual void OnDestroy()
-        {
-            Asserts.True(s_Instance == this, $"Singleton instance of type {typeof(TSingleton)} is already initialized.");
-            m_Called |= CallState.OnDestroy;
-            s_Instance = null;
-            Dispose();
         }
     }
 
