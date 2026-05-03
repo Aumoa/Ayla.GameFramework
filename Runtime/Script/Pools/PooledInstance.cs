@@ -44,7 +44,7 @@ namespace Ayla
 
         public static void Release(GameObject target)
         {
-            if (target.TryGetComponent<PooledInstance>(out var pooledInstance) == false)
+            if (target == null || target.TryGetComponent<PooledInstance>(out var pooledInstance) == false)
             {
                 throw new ArgumentException("The target GameObject does not have a PooledInstance component.");
             }
@@ -54,12 +54,22 @@ namespace Ayla
 
         public static void Release(Component target)
         {
-            if (target.TryGetComponent<PooledInstance>(out var pooledInstance) == false)
+            if (target == null || target.TryGetComponent<PooledInstance>(out var pooledInstance) == false)
             {
                 throw new ArgumentException("The target Component does not have a PooledInstance component.");
             }
 
             pooledInstance.m_Container.InternalRelease(pooledInstance);
+        }
+
+        public static void Release(PooledInstance target)
+        {
+            if (target == null)
+            {
+                throw new ArgumentNullException(nameof(target), "The target PooledInstance cannot be null.");
+            }
+
+            target.m_Container.InternalRelease(target);
         }
     }
 }
