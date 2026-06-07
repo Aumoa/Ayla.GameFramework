@@ -1,6 +1,6 @@
 # Repository Instructions
 
-Policy version: 2026-06-08.2
+Policy version: 2026-06-08.3
 
 This repository is a plugin project intended to be attached to a host Unity
 project.
@@ -42,6 +42,15 @@ platform: CRLF on Windows and LF on Linux or macOS.
 
 C# member fields should use the `m_` prefix. Static fields should use the `s_`
 prefix when a prefix is needed to avoid naming collisions or match nearby code.
+
+## Unity Folder Layout
+
+Unity C# scripts must be created under a `Script` subfolder. Runtime scripts
+belong under `Runtime/Script/`, and editor-only scripts belong under
+`Editor/Script/`.
+
+Code that is used at runtime must live under `Runtime/`. Code that depends on
+UnityEditor or is only used in the Unity editor must live under `Editor/`.
 
 ## Ayla Plugin Family
 

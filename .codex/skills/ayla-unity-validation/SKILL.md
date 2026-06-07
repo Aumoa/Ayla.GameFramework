@@ -18,13 +18,14 @@ description: Repository-local validation workflow for Ayla Unity plugin projects
 - For runtime C# changes, verify Unity compilation through the host project when possible.
 - For editor code, custom inspectors, importers, or property drawers, prefer EditMode tests or an editor compilation check.
 - For scene, lifecycle, pooling, timing, async, or MonoBehaviour behavior, prefer PlayMode tests when practical.
+- For new or moved C# scripts, verify they live under `Runtime/Script/` when used at runtime or `Editor/Script/` when editor-only.
 - For shared `AGENTS.md`, `.gitignore`, or shared `.codex/skills/*` changes, inspect sibling `Ayla.*` repositories under the same parent and keep equivalent shared instructions synchronized.
 
 ## Unity Host Workflow
 
 1. Identify the host Unity project from `AGENTS.local.md` or from the plugin path.
 2. Confirm the plugin remains under the host project hierarchy, preferably under `Assets/Plugins/`.
-3. Inspect asmdef files and Editor/Runtime folder boundaries before running expensive checks.
+3. Inspect asmdef files, `Runtime/Script` and `Editor/Script` placement, and Editor/Runtime folder boundaries before running expensive checks.
 4. Run the narrowest Unity test or compilation check that covers the change.
 5. If Unity CLI, Unity Hub, licenses, packages, or the host project are unavailable, state exactly what could not be run and perform a stricter source review.
 

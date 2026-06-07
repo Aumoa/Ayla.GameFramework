@@ -21,6 +21,7 @@ noise.
 ## Unity Plugin Checks
 
 - Verify runtime assemblies do not depend on `UnityEditor` or editor-only code.
+- Verify C# scripts are placed under `Runtime/Script/` for runtime code or `Editor/Script/` for editor-only code.
 - Check asmdef references, optional package dependencies, platform constraints, and define constraints when touched.
 - Check Unity serialization behavior for renamed fields, private serialized fields, `[SerializeReference]`, asset GUID assumptions, and domain reload behavior.
 - Review MonoBehaviour, ScriptableObject, async, cancellation, pooling, and disposal code for lifecycle edge cases.
