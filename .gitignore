@@ -1,2 +1,16 @@
 # Claude Personal Settings
 .claude/*.local.json
+
+/AGENTS.local.md
+/AGENTS.local.md.meta
+/AGENTS.md.meta
+
+# Project-local Codex configuration can live in this Unity asset tree, but Unity
+# metadata for agent-only files should stay local.
+/.codex.meta
+/.codex/**/*.meta
+
+# Shared skills belong under .codex/skills/. A local- prefix marks a private
+# machine-local skill for this checkout only.
+/.codex/skills/local-*/
+/.codex/skills/local-*.meta
