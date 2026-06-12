@@ -2,7 +2,9 @@
 
 using System;
 using System.Collections.Generic;
+#if UNITY_EDITOR
 using UnityEditor;
+#endif
 using UnityEngine;
 using UnityEngine.LowLevel;
 using UnityEngine.PlayerLoop;
@@ -15,6 +17,7 @@ namespace Ayla
         public const string kDefaultAssetPath = "Assets/Settings/TimerMixer.asset";
 
         private static TimerMixer? s_Mixer;
+        private static bool s_Registered;
 
         [SerializeField]
         internal TimerChannel[] m_Channels = Array.Empty<TimerChannel>();
@@ -73,8 +76,27 @@ namespace Ayla
 
                 Asserts.Equals(s_Mixer, null);
                 s_Mixer = this;
+                m_Time = 0;
+                m_DeltaTime = 0;
+                m_RuntimeTimeScale = UnityEngine.Time.timeScale;
                 Register();
             }
+        }
+
+        private void OnDisable()
+        {
+            if (ReferenceEquals(s_Mixer, this))
+            {
+                Unregister();
+                s_Mixer = null;
+            }
+
+#if !UNITY_EDITOR
+            if (ReferenceEquals(s_PreloadedAsset, this))
+            {
+                s_PreloadedAsset = null;
+            }
+#endif
         }
 
         void IInternalTimerChannel.TimeUpdate(double parentTimeScale, double deltaTime, List<IInternalTimerChannel> timeScaleChanged)
@@ -111,32 +133,117 @@ namespace Ayla
         {
             public static void Call()
             {
+                if (s_Mixer == null)
+                {
+                    return;
+                }
+
                 using var scope1 = ListPool<IInternalTimerChannel>.Get(out var timeScaleChanged);
-                ((IInternalTimerChannel)s_Mixer!).TimeUpdate(1.0, (double)UnityEngine.Time.deltaTime, timeScaleChanged);
+                ((IInternalTimerChannel)s_Mixer).TimeUpdate(1.0, (double)UnityEngine.Time.deltaTime, timeScaleChanged);
             }
         }
 
         private static void Register()
         {
             var system = PlayerLoop.GetCurrentPlayerLoop();
+            RemoveFromPlayerLoop(ref system);
+
+            if (TryAddToTimeUpdate(ref system) == false)
+            {
+                Debug.LogError("Failed to register TimerMixer update in Unity PlayerLoop.");
+                s_Registered = false;
+                return;
+            }
+
+            PlayerLoop.SetPlayerLoop(system);
+            s_Registered = true;
+        }
+
+        private static void Unregister()
+        {
+            if (s_Registered == false)
+            {
+                return;
+            }
+
+            var system = PlayerLoop.GetCurrentPlayerLoop();
+            if (RemoveFromPlayerLoop(ref system))
+            {
+                PlayerLoop.SetPlayerLoop(system);
+            }
+            s_Registered = false;
+        }
+
+        private static bool TryAddToTimeUpdate(ref PlayerLoopSystem system)
+        {
+            if (system.type == typeof(TimeUpdate))
+            {
+                var oldArray = system.subSystemList ?? Array.Empty<PlayerLoopSystem>();
+                var newArray = new PlayerLoopSystem[oldArray.Length + 1];
+                Array.Copy(oldArray, newArray, oldArray.Length);
+                newArray[oldArray.Length] = new PlayerLoopSystem
+                {
+                    type = typeof(TimeUpdateExecutor),
+                    updateDelegate = TimeUpdateExecutor.Call
+                };
+                system.subSystemList = newArray;
+                return true;
+            }
+
+            if (system.subSystemList == null)
+            {
+                return false;
+            }
+
             for (int i = 0; i < system.subSystemList.Length; ++i)
             {
-                ref var s = ref system.subSystemList[i];
-                if (s.type == typeof(TimeUpdate))
+                if (TryAddToTimeUpdate(ref system.subSystemList[i]))
                 {
-                    var oldArray = system.subSystemList;
-                    var newArray = new PlayerLoopSystem[oldArray.Length + 1];
-                    Array.Copy(oldArray, newArray, oldArray.Length);
-                    newArray[oldArray.Length] = new PlayerLoopSystem
-                    {
-                        type = typeof(TimeUpdateExecutor),
-                        updateDelegate = TimeUpdateExecutor.Call
-                    };
-                    system.subSystemList = newArray;
-                    break;
+                    return true;
                 }
             }
-            PlayerLoop.SetPlayerLoop(system);
+
+            return false;
+        }
+
+        private static bool RemoveFromPlayerLoop(ref PlayerLoopSystem system)
+        {
+            if (system.subSystemList == null)
+            {
+                return false;
+            }
+
+            var subSystemList = system.subSystemList;
+            bool changed = false;
+            int writeIndex = 0;
+            for (int readIndex = 0; readIndex < subSystemList.Length; ++readIndex)
+            {
+                var subSystem = subSystemList[readIndex];
+                if (subSystem.type == typeof(TimeUpdateExecutor))
+                {
+                    changed = true;
+                    continue;
+                }
+
+                if (RemoveFromPlayerLoop(ref subSystem))
+                {
+                    changed = true;
+                }
+
+                subSystemList[writeIndex++] = subSystem;
+            }
+
+            if (changed)
+            {
+                if (writeIndex != subSystemList.Length)
+                {
+                    Array.Resize(ref subSystemList, writeIndex);
+                }
+
+                system.subSystemList = subSystemList;
+            }
+
+            return changed;
         }
     }
 }

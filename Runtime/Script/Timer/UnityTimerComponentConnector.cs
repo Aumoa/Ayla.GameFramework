@@ -1,5 +1,7 @@
 ﻿using System.Collections.Generic;
+#if UNITY_EDITOR
 using UnityEditor;
+#endif
 using UnityEngine;
 using UnityEngine.Playables;
 
@@ -57,9 +59,23 @@ namespace Ayla
 
         private void InternalAddTarget(Component component)
         {
-            Asserts.True(component is PlayableDirector);
-            Asserts.True(component is Animator);
-            Asserts.True(component is ParticleSystem);
+            if (component == null)
+            {
+                throw new System.ArgumentNullException(nameof(component));
+            }
+
+            if (component is not PlayableDirector &&
+                component is not Animator &&
+                component is not ParticleSystem)
+            {
+                throw new System.ArgumentException("Target must be an Animator, PlayableDirector, or ParticleSystem.", nameof(component));
+            }
+
+            if (m_Targets.Contains(component))
+            {
+                return;
+            }
+
             m_Targets.Add(component);
         }
 
