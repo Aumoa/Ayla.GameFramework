@@ -5,12 +5,7 @@
         "Ayla.Core",
         "Unity.ResourceManager",
         "Unity.Addressables",
-        "Unity.Burst",
-        "Unity.Collections",
-        "Unity.Entities",
-        "Unity.Transforms",
-        "Unity.Mathematics",
-        "Unity.Physics"
+        "Unity.Collections"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
