@@ -4,8 +4,7 @@
     "references": [
         "Ayla.Core",
         "Unity.ResourceManager",
-        "Unity.Addressables",
-        "Unity.Collections"
+        "Unity.Addressables"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
