@@ -1,6 +1,6 @@
 # Repository Instructions
 
-Policy version: 2026-06-17.4
+Policy version: 2026-06-17.5
 
 This repository is a plugin project intended to be attached to a host Unity
 project.
@@ -45,6 +45,9 @@ prefix when a prefix is needed to avoid naming collisions or match nearby code.
 
 Unless there is a specific reason not to, add `#nullable enable` to C# files so
 nullable reference analysis remains effective.
+
+When adding `#nullable enable`, place it at the very top of the C# file, before
+any `using` directives or namespace declarations.
 
 ## Unity Folder Layout
 
