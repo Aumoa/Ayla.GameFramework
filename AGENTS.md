@@ -1,6 +1,6 @@
 # Repository Instructions
 
-Policy version: 2026-06-08.3
+Policy version: 2026-06-17.4
 
 This repository is a plugin project intended to be attached to a host Unity
 project.
@@ -42,6 +42,9 @@ platform: CRLF on Windows and LF on Linux or macOS.
 
 C# member fields should use the `m_` prefix. Static fields should use the `s_`
 prefix when a prefix is needed to avoid naming collisions or match nearby code.
+
+Unless there is a specific reason not to, add `#nullable enable` to C# files so
+nullable reference analysis remains effective.
 
 ## Unity Folder Layout
 
