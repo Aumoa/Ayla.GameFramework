@@ -89,11 +89,11 @@ namespace Ayla
             }
 
             var instance = Instantiate(prefab, Root);
-            var actor = instance.GetComponentInChildren<Actor>(true);
+            var actor = instance.GetComponent<Actor>();
             if (actor == null)
             {
                 DestroySpawnedInstance(instance);
-                throw new InvalidOperationException($"Prefab '{prefab.name}' does not contain an {nameof(Actor)}.");
+                throw new InvalidOperationException($"Prefab '{prefab.name}' must contain an {nameof(Actor)} on its root GameObject.");
             }
 
             instance.transform.SetLocalPositionAndRotation(localPosition, localRotation);
