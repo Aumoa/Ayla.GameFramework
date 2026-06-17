@@ -1,24 +1,36 @@
-﻿#nullable enable
+#nullable enable
 
 using System;
-using UnityEngine;
 
 namespace Ayla
 {
-    public class ActorComponent : MonoBehaviour
+    public class ActorComponent
     {
+        private readonly Actor m_Owner = Initializer.GetOwner();
+
+        public Actor Owner => m_Owner;
+
         internal static class Initializer
         {
-            public static Actor? s_Owner;
+            private static Actor? s_Owner;
 
-            public static void Setup(Actor owner)
+            public static Actor? Setup(Actor owner)
+            {
+                var previousOwner = s_Owner;
+                s_Owner = owner;
+                return previousOwner;
+            }
+
+            public static void Restore(Actor? owner)
             {
                 s_Owner = owner;
             }
+
+            public static Actor GetOwner()
+            {
+                return s_Owner ?? throw new InvalidOperationException(
+                    "ActorComponent must be created through Actor.AddActorComponent.");
+            }
         }
-
-        private readonly Actor? m_Owner = Initializer.s_Owner;
-
-        public Actor Owner => m_Owner ?? throw new InvalidOperationException("ActorComponent must be initialized with an Actor.");
     }
 }
