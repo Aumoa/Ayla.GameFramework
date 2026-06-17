@@ -2,6 +2,7 @@
 
 using System;
 using UnityEngine;
+using UnityEngine.Assertions;
 
 namespace Ayla
 {
@@ -71,29 +72,18 @@ namespace Ayla
                 throw new ArgumentNullException(nameof(prefab));
             }
 
-            var actor = Instantiate(prefab, Root);
-            actor.transform.SetLocalPositionAndRotation(localPosition, localRotation);
-            return actor;
+            return (T)SpawnActorPrefab(prefab.gameObject, typeof(T), localPosition, localRotation);
         }
 
-        public Actor SpawnActor(GameObject prefab)
+        private Actor SpawnActorPrefab(GameObject prefab, Type actorType, Vector3 localPosition, Quaternion localRotation)
         {
-            return SpawnActor(prefab, Vector3.zero, Quaternion.identity);
-        }
-
-        public Actor SpawnActor(GameObject prefab, Vector3 localPosition, Quaternion localRotation)
-        {
-            if (prefab == null)
-            {
-                throw new ArgumentNullException(nameof(prefab));
-            }
-
             var instance = Instantiate(prefab, Root);
-            var actor = instance.GetComponent<Actor>();
+            var actor = instance.GetComponent(actorType) as Actor;
+            Assert.IsNotNull(actor, $"Prefab '{prefab.name}' must contain a {actorType.Name} component on its root GameObject.");
             if (actor == null)
             {
                 DestroySpawnedInstance(instance);
-                throw new InvalidOperationException($"Prefab '{prefab.name}' must contain an {nameof(Actor)} on its root GameObject.");
+                return null!;
             }
 
             instance.transform.SetLocalPositionAndRotation(localPosition, localRotation);
