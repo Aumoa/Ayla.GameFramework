@@ -4,7 +4,13 @@
     "references": [
         "Ayla.Core",
         "Unity.ResourceManager",
-        "Unity.Addressables"
+        "Unity.Addressables",
+        "Unity.Burst",
+        "Unity.Collections",
+        "Unity.Entities",
+        "Unity.Transforms",
+        "Unity.Mathematics",
+        "Unity.Physics"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
