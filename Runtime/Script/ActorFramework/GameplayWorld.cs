@@ -2,7 +2,6 @@
 
 using System;
 using UnityEngine;
-using UnityEngine.Assertions;
 
 namespace Ayla
 {
@@ -12,6 +11,22 @@ namespace Ayla
         private Transform? m_Root;
 
         public Transform Root => m_Root != null ? m_Root : transform;
+
+        protected virtual void OnEnable()
+        {
+            if (GameplayWorldManager.TryGetInstance(out var manager))
+            {
+                manager.RegisterWorld(this);
+            }
+        }
+
+        protected virtual void OnDisable()
+        {
+            if (GameplayWorldManager.TryGetInstance(out var manager))
+            {
+                manager.UnregisterWorld(this);
+            }
+        }
 
         public T SpawnActor<T>() where T : Actor
         {
@@ -79,7 +94,7 @@ namespace Ayla
         {
             var instance = Instantiate(prefab, Root);
             var actor = instance.GetComponent(actorType) as Actor;
-            Assert.IsNotNull(actor, $"Prefab '{prefab.name}' must contain a {actorType.Name} component on its root GameObject.");
+            Asserts.IsNotNull(actor, $"Prefab '{prefab.name}' must contain a {actorType.Name} component on its root GameObject.");
             if (actor == null)
             {
                 DestroySpawnedInstance(instance);
