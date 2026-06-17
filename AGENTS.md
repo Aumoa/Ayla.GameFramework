@@ -1,6 +1,6 @@
 # Repository Instructions
 
-Policy version: 2026-06-17.5
+Policy version: 2026-06-18.2
 
 This repository is a plugin project intended to be attached to a host Unity
 project.
@@ -107,6 +107,24 @@ validation, test selection, and reporting workflows.
 Use the repository-local `ayla-unity-pr-review` skill at
 `.codex/skills/ayla-unity-pr-review/SKILL.md` for pull request reviews, branch
 diff reviews, architecture checks, and merge-readiness checks.
+
+## Unit Testing
+
+When behavior is appropriate for unit tests, add or update unit tests
+proactively and run the relevant test selection when practical.
+
+Keep tests in separate Unity test assemblies instead of mixing tests into
+runtime or editor production assemblies. Runtime systems and editor tools can
+both be test targets; choose EditMode or PlayMode based on what the behavior
+needs.
+
+Use Unity Test Framework and its NUnit features actively, including focused
+assertions, fixtures, setup and teardown, parameterized cases, and `UnityTest`
+only when frame-based behavior needs it.
+
+Test code must follow the same basic coding guidance as production code,
+including folder layout, English text, line endings, field naming, and nullable
+annotations when applicable.
 
 ## Instruction Storage
 
