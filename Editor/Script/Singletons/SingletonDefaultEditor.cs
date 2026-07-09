@@ -71,7 +71,7 @@ namespace Ayla
             var guid = AssetDatabase.AssetPathToGUID(assetPath);
             if (string.IsNullOrEmpty(guid))
             {
-                guid = serializedObject.targetObject.GetInstanceID().ToString();
+                guid = serializedObject.targetObject.GetEntityId().ToString();
             }
 
             m_TargetGUID = guid;

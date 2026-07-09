@@ -6,6 +6,7 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using UnityEditor;
 using UnityEditor.AddressableAssets;
+using GUID = UnityEngine.GUID;
 using Object = UnityEngine.Object;
 
 namespace Ayla

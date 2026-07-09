@@ -2,6 +2,7 @@
 
 using System;
 using UnityEditor;
+using GUID = UnityEngine.GUID;
 using Object = UnityEngine.Object;
 
 namespace Ayla

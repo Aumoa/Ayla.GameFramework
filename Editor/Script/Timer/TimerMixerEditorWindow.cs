@@ -17,7 +17,7 @@ namespace Ayla
         private ITimerChannel? m_SelectedChannel;
         private string? m_EditingName;
         private bool m_RequestFocusForRename;
-        private readonly HashSet<int> m_CollapsedChannels = new();
+        private readonly HashSet<EntityId> m_CollapsedChannels = new();
         private float m_GroupContentHeight;
         private double m_LastClickTime;
         private ITimerChannel? m_LastClickedChannel;
@@ -163,7 +163,7 @@ namespace Ayla
             }
 
             bool hasChildren = channel.Children.Count > 0;
-            bool isExpanded = hasChildren && !m_CollapsedChannels.Contains(((Object)channel).GetInstanceID());
+            bool isExpanded = hasChildren && !m_CollapsedChannels.Contains(((Object)channel).GetEntityId());
             drawRect = drawRect.MarginTop(rowH);
 
             if (isExpanded)
@@ -259,8 +259,8 @@ namespace Ayla
                 }
 
                 bool hasChildren = channel.Children.Count > 0;
-                int instanceId = ((Object)channel).GetInstanceID();
-                bool isExpanded = hasChildren && !m_CollapsedChannels.Contains(instanceId);
+                var entityId = ((Object)channel).GetEntityId();
+                bool isExpanded = hasChildren && !m_CollapsedChannels.Contains(entityId);
 
                 if (hasChildren)
                 {
@@ -271,11 +271,11 @@ namespace Ayla
                     {
                         if (isExpanded)
                         {
-                            m_CollapsedChannels.Add(instanceId);
+                            m_CollapsedChannels.Add(entityId);
                         }
                         else
                         {
-                            m_CollapsedChannels.Remove(instanceId);
+                            m_CollapsedChannels.Remove(entityId);
                         }
                         evt.Use();
                         Repaint();
@@ -408,9 +408,9 @@ namespace Ayla
         }
 
         [OnOpenAsset]
-        public static bool OnOpenAsset(int instanceId)
+        public static bool OnOpenAsset(EntityId entityId)
         {
-            if (EditorUtility.EntityIdToObject(instanceId) is TimerMixer)
+            if (EditorUtility.EntityIdToObject(entityId) is TimerMixer)
             {
                 OpenWindow();
                 return true;
