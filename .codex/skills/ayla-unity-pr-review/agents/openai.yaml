@@ -1,4 +1,0 @@
-interface:
-  display_name: "Ayla Unity PR Review"
-  short_description: "Review Ayla Unity plugin changes."
-  default_prompt: "Use the Ayla Unity PR review workflow to review this change."

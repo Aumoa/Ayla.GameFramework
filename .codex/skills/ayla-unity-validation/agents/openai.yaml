@@ -1,4 +1,0 @@
-interface:
-  display_name: "Ayla Unity Validation"
-  short_description: "Validate Ayla Unity plugin changes."
-  default_prompt: "Use the Ayla Unity validation workflow to verify this change."
